@@ -84,8 +84,8 @@ const Header = () => {
                     <MenuItem component={RouterLink} to="/login" onClick={handleMenuClose}>
                       Login
                     </MenuItem>
-                    <MenuItem component={RouterLink} to="/signup" onClick={handleMenuClose}>
-                      Sign Up
+                    <MenuItem component={RouterLink} to="/onboarding" onClick={handleMenuClose}>
+                      Get Started for Free
                     </MenuItem>
                   </>
                 )}
@@ -141,7 +141,7 @@ const Header = () => {
                   </Button>
                   <Button
                     component={RouterLink}
-                    to="/signup"
+                    to="/onboarding"
                     color="primary"
                     variant="contained"
                     sx={{ ml: 2 }}
