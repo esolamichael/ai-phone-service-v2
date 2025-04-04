@@ -21,6 +21,8 @@ import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { enhancedApiCall } from '../../utils/ErrorHandling';
 
 const SignupSchema = Yup.object().shape({
   firstName: Yup.string()
@@ -291,7 +293,7 @@ const SignupPage = () => {
                         sx={{ py: 1.5, px: 4 }}
                       >
                         {isSubmitting ? (
-                          <CircularProgress size={24} color="inherit" />
+                          <LoadingSpinner message="Creating account..." />
                         ) : activeStep === 0 ? (
                           'Continue'
                         ) : (

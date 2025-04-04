@@ -1,3 +1,4 @@
+// src/api/auth.js
 import api from './index';
 
 const authApi = {
@@ -55,6 +56,17 @@ const authApi = {
   resetPassword: async (token, password) => {
     try {
       const response = await api.post('/auth/reset-password', { token, password });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  // Refresh token
+  refreshToken: async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      const response = await api.post('/auth/refresh-token', { refreshToken });
       return response.data;
     } catch (error) {
       throw error;

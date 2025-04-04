@@ -16,6 +16,8 @@ import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { enhancedApiCall } from '../../utils/ErrorHandling';
 
 const ResetPasswordSchema = Yup.object().shape({
   password: Yup.string()
@@ -130,7 +132,7 @@ const ResetPasswordPage = () => {
                             sx={{ py: 1.5 }}
                           >
                             {isSubmitting ? (
-                              <CircularProgress size={24} color="inherit" />
+                              <LoadingSpinner message="Resetting password..." />
                             ) : (
                               'Reset Password'
                             )}

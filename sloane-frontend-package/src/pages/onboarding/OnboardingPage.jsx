@@ -16,6 +16,7 @@ import ServicesForm from '../../components/onboarding/ServicesForm';
 import TwilioSetupForm from '../../components/onboarding/TwilioSetupForm';
 import CalendarIntegrationForm from '../../components/onboarding/CalendarIntegrationForm';
 import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const OnboardingPage = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -150,8 +151,8 @@ const OnboardingPage = () => {
           {getStepContent(activeStep)}
           
           {isSubmitting && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <CircularProgress />
+            <Box sx={{ mt: 4 }}>
+              <LoadingSpinner message="Submitting your information..." />
             </Box>
           )}
         </Paper>

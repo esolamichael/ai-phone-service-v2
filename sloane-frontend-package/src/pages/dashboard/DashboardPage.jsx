@@ -19,6 +19,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../../contexts/AuthContext';
 import callsApi from '../../api/calls';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const DashboardPage = () => {
   const { currentUser } = useAuth();
@@ -120,11 +121,12 @@ const DashboardPage = () => {
       </Box>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
+          <LoadingSpinner message="Loading dashboard data..." />
       ) : (
         <>
+          {/* Dashboard content *}
+        </>
+      )}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ height: '100%' }}>

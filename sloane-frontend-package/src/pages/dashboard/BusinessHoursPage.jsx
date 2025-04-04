@@ -23,6 +23,8 @@ import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 import businessApi from '../../api/business';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { enhancedApiCall } from '../../utils/ErrorHandling';
 
 const BusinessHoursSchema = Yup.object().shape({
   monday: Yup.object().shape({
@@ -119,36 +121,35 @@ const BusinessHoursPage = () => {
 
   useEffect(() => {
     const fetchBusinessHours = async () => {
-      try {
-        setLoading(true);
-        const response = await businessApi.getBusinessHours();
-        setHoursData(response);
-      } catch (error) {
-        console.error('Error fetching business hours:', error);
-        setError('Failed to load business hours. Please try again later.');
-        
-        // Set default data for demonstration
-        const defaultDay = {
-          isOpen: true,
-          openTime: defaultOpenTime,
-          closeTime: defaultCloseTime
-        };
-        
-        setHoursData({
-          monday: { ...defaultDay },
-          tuesday: { ...defaultDay },
-          wednesday: { ...defaultDay },
-          thursday: { ...defaultDay },
-          friday: { ...defaultDay },
-          saturday: { ...defaultDay, isOpen: false },
-          sunday: { ...defaultDay, isOpen: false },
-          customMessage: ''
-        });
-      } finally {
-        setLoading(false);
-      }
+try {
+    setLoading(true);
+    const response = await enhancedApiCall(businessApi.getBusinessHours);
+    setHoursData(response);
+  } catch (error) {
+    console.error('Error fetching business hours:', error);
+    setError('Failed to load business hours. Please try again later.');
+    
+    // Set default data for demonstration
+    const defaultDay = {
+      isOpen: true,
+      openTime: defaultOpenTime,
+      closeTime: defaultCloseTime
     };
-
+    
+    setHoursData({
+      monday: { ...defaultDay },
+      tuesday: { ...defaultDay },
+      wednesday: { ...defaultDay },
+      thursday: { ...defaultDay },
+      friday: { ...defaultDay },
+      saturday: { ...defaultDay, isOpen: false },
+      sunday: { ...defaultDay, isOpen: false },
+      customMessage: ''
+    });
+  } finally {
+    setLoading(false);
+  }
+};
     fetchBusinessHours();
   }, []);
 
@@ -170,11 +171,7 @@ const BusinessHoursPage = () => {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingSpinner message="Loading business hours..." />;
   }
 
   return (

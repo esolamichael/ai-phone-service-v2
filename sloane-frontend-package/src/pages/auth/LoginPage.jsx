@@ -18,6 +18,8 @@ import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { enhancedApiCall } from '../../utils/ErrorHandling';
 
 const LoginSchema = Yup.object().shape({
   email: Yup.string()
@@ -124,7 +126,7 @@ const LoginPage = () => {
                       sx={{ py: 1.5 }}
                     >
                       {isSubmitting ? (
-                        <CircularProgress size={24} color="inherit" />
+                         <LoadingSpinner message="Signing in..." />
                       ) : (
                         'Sign In'
                       )}

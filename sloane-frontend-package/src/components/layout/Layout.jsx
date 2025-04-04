@@ -1,8 +1,10 @@
+// src/components/layout/Layout.jsx
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Box, CssBaseline, ThemeProvider } from '@mui/material';
 import Header from './Header';
 import Footer from './Footer';
+import NetworkStatusIndicator from '../common/NetworkStatusIndicator';
 import theme from '../../styles/theme';
 
 const Layout = () => {
@@ -28,6 +30,7 @@ const Layout = () => {
           <Outlet />
         </Box>
         <Footer />
+        <NetworkStatusIndicator />
       </Box>
     </ThemeProvider>
   );

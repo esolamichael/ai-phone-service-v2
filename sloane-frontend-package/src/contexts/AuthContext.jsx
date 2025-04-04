@@ -1,5 +1,5 @@
-import React from 'react';
-import { createContext, useContext, useState, useEffect } from 'react';
+// src/contexts/AuthContext.jsx
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import authApi from '../api/auth';
 
 const AuthContext = createContext();
@@ -26,15 +26,47 @@ export function AuthProvider({ children }) {
   // Fetch current user data
   const fetchCurrentUser = async () => {
     try {
+      setLoading(true);
       const userData = await authApi.getCurrentUser();
-      setCurrentUser(userData);
+      setCurrentUser({
+        ...userData,
+        token: localStorage.getItem('token')
+      });
     } catch (err) {
       console.error('Failed to fetch current user:', err);
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
     } finally {
       setLoading(false);
     }
   };
+
+  // Refresh token function
+  const refreshToken = useCallback(async () => {
+    try {
+      // Call the refresh token API endpoint
+      const response = await authApi.refreshToken();
+      
+      // Update the tokens in localStorage
+      localStorage.setItem('token', response.token);
+      if (response.refreshToken) {
+        localStorage.setItem('refreshToken', response.refreshToken);
+      }
+      
+      // Update the current user with the new token
+      setCurrentUser(prevUser => ({
+        ...prevUser,
+        token: response.token,
+      }));
+
+      return response.token;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      // If refresh fails, log the user out
+      logout();
+      throw error;
+    }
+  }, []);
 
   // Login function
   const login = async (email, password) => {
@@ -42,7 +74,13 @@ export function AuthProvider({ children }) {
     try {
       const response = await authApi.login(email, password);
       localStorage.setItem('token', response.token);
-      setCurrentUser(response.user);
+      if (response.refreshToken) {
+        localStorage.setItem('refreshToken', response.refreshToken);
+      }
+      setCurrentUser({
+        ...response.user,
+        token: response.token
+      });
       return response.user;
     } catch (err) {
       setError(err.message || 'Failed to login');
@@ -56,7 +94,13 @@ export function AuthProvider({ children }) {
     try {
       const response = await authApi.signup(userData);
       localStorage.setItem('token', response.token);
-      setCurrentUser(response.user);
+      if (response.refreshToken) {
+        localStorage.setItem('refreshToken', response.refreshToken);
+      }
+      setCurrentUser({
+        ...response.user,
+        token: response.token
+      });
       return response.user;
     } catch (err) {
       setError(err.message || 'Failed to sign up');
@@ -73,6 +117,7 @@ export function AuthProvider({ children }) {
       console.error('Logout error:', err);
     } finally {
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       setCurrentUser(null);
     }
   };
@@ -107,7 +152,8 @@ export function AuthProvider({ children }) {
     signup,
     logout,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    refreshToken
   };
 
   return (
@@ -116,3 +162,5 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+export { AuthContext };

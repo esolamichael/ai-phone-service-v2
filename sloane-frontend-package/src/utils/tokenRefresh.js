@@ -1,10 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { AuthContext } from '../../contexts/AuthContext';
-import { useAuth } from '../../contexts/AuthContext';
+// src/utils/tokenRefresh.js
+import { useEffect, useState } from 'react';
 
 // This is a custom hook to handle token refresh
-export const useTokenRefresh = () => {
-  const { currentUser, refreshToken } = useAuth();
+export const useTokenRefresh = (currentUser, refreshTokenFunction) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
@@ -26,7 +24,7 @@ export const useTokenRefresh = () => {
         const fiveMinutesInMs = 5 * 60 * 1000;
         if (expirationTime - currentTime < fiveMinutesInMs) {
           setIsRefreshing(true);
-          await refreshToken();
+          await refreshTokenFunction();
           setIsRefreshing(false);
         }
       } catch (error) {
@@ -43,69 +41,9 @@ export const useTokenRefresh = () => {
 
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
-  }, [currentUser, refreshToken]);
+  }, [currentUser, refreshTokenFunction]);
 
   return { isRefreshing };
 };
 
-// Update the AuthContext.jsx file to include the refreshToken function
-export const AuthContextUpdated = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // Add refreshToken function to the context
-  const refreshToken = async () => {
-    try {
-      // Call the refresh token API endpoint
-      const response = await fetch('https://fluted-mercury-455419-n0.uc.r.appspot.com/api/auth/refresh-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          refreshToken: localStorage.getItem('refreshToken'),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to refresh token');
-      }
-
-      const data = await response.json();
-      
-      // Update the tokens in localStorage
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      
-      // Update the current user with the new token
-      setCurrentUser(prevUser => ({
-        ...prevUser,
-        token: data.token,
-      }));
-
-      return data.token;
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-      // If refresh fails, log the user out
-      logout();
-      throw error;
-    }
-  };
-
-  // Rest of the AuthContext implementation...
-  // ...
-
-  return (
-    <AuthContext.Provider value={{ 
-      currentUser, 
-      loading, 
-      login, 
-      signup, 
-      logout, 
-      resetPassword,
-      refreshToken // Add the refreshToken function to the context
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
+export default useTokenRefresh;

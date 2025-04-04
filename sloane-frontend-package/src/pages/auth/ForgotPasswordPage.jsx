@@ -15,6 +15,8 @@ import { Link as RouterLink } from 'react-router-dom';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { enhancedApiCall } from '../../utils/ErrorHandling';
 
 const ForgotPasswordSchema = Yup.object().shape({
   email: Yup.string()
@@ -97,7 +99,7 @@ const ForgotPasswordPage = () => {
                           sx={{ py: 1.5 }}
                         >
                           {isSubmitting ? (
-                            <CircularProgress size={24} color="inherit" />
+                            <LoadingSpinner message="Sending reset link..." />
                           ) : (
                             'Send Reset Link'
                           )}

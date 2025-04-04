@@ -22,6 +22,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
 import callsApi from '../../api/calls';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { enhancedApiCall } from '../../utils/ErrorHandling';
 
 const CallHistoryPage = () => {
   const [loading, setLoading] = useState(true);
@@ -39,40 +41,40 @@ const CallHistoryPage = () => {
     fetchCalls();
   }, [page, rowsPerPage, searchQuery, filters]);
 
-  const fetchCalls = async () => {
-    try {
-      setLoading(true);
-      const params = {
-        page: page + 1,
-        limit: rowsPerPage,
-        search: searchQuery || undefined,
-        status: filters.status !== 'all' ? filters.status : undefined,
-        dateRange: filters.dateRange !== 'all' ? filters.dateRange : undefined
-      };
-      
-      const response = await callsApi.getCallHistory(params);
-      
-      // In a real implementation, we would use the actual data from the backend
-      // For now, we'll simulate some data
-      const mockCalls = Array.from({ length: 25 }, (_, i) => ({
-        id: `call-${i + 1}`,
-        callerName: `Caller ${i + 1}`,
-        callerNumber: `(555) ${100 + i}-${1000 + i}`,
-        timestamp: new Date(Date.now() - (i * 3600000)).toISOString(),
-        duration: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`,
-        status: Math.random() > 0.3 ? 'answered' : 'missed',
-        message: Math.random() > 0.2 ? 'Left a message about services and pricing.' : 'No message left.'
-      }));
-      
-      setCalls(mockCalls.slice(page * rowsPerPage, (page + 1) * rowsPerPage));
-      setTotalCalls(mockCalls.length);
-    } catch (error) {
-      console.error('Error fetching call history:', error);
-      setCalls([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchCalls = async () => {
+  try {
+    setLoading(true);
+    const params = {
+      page: page + 1,
+      limit: rowsPerPage,
+      search: searchQuery || undefined,
+      status: filters.status !== 'all' ? filters.status : undefined,
+      dateRange: filters.dateRange !== 'all' ? filters.dateRange : undefined
+    };
+    
+    const response = await enhancedApiCall(callsApi.getCallHistory, params);
+    
+    // In a real implementation, we would use the actual data from the backend
+    // For now, we'll simulate some data
+    const mockCalls = Array.from({ length: 25 }, (_, i) => ({
+      id: `call-${i + 1}`,
+      callerName: `Caller ${i + 1}`,
+      callerNumber: `(555) ${100 + i}-${1000 + i}`,
+      timestamp: new Date(Date.now() - (i * 3600000)).toISOString(),
+      duration: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`,
+      status: Math.random() > 0.3 ? 'answered' : 'missed',
+      message: Math.random() > 0.2 ? 'Left a message about services and pricing.' : 'No message left.'
+    }));
+    
+    setCalls(mockCalls.slice(page * rowsPerPage, (page + 1) * rowsPerPage));
+    setTotalCalls(mockCalls.length);
+  } catch (error) {
+    console.error('Error fetching call history:', error);
+    setCalls([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -170,12 +172,13 @@ const CallHistoryPage = () => {
 
       <Paper>
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress />
-          </Box>
+          <LoadingSpinner message="Loading call history..." />
         ) : (
           <>
-            <TableContainer>
+            {/* Call history table content */}
+          </>
+        )}
+              <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow>

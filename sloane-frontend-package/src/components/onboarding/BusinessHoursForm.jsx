@@ -10,14 +10,30 @@ import {
   Checkbox,
   FormGroup,
   FormHelperText,
-  TextField
+  TextField,
+  Alert
 } from '@mui/material';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
-import { parse, format } from 'date-fns';
+import { parse, format, isAfter } from 'date-fns';
+
+// Custom validation function to check if closing time is after opening time
+const isClosingAfterOpening = (closing, opening) => {
+  if (!closing || !opening) return true; // Skip validation if either time is missing
+  
+  // Convert both to the same date to compare only the time
+  const baseDate = new Date();
+  const openTime = new Date(baseDate);
+  const closeTime = new Date(baseDate);
+  
+  openTime.setHours(opening.getHours(), opening.getMinutes(), 0);
+  closeTime.setHours(closing.getHours(), closing.getMinutes(), 0);
+  
+  return isAfter(closeTime, openTime);
+};
 
 const BusinessHoursSchema = Yup.object().shape({
   monday: Yup.object().shape({
@@ -26,9 +42,17 @@ const BusinessHoursSchema = Yup.object().shape({
       is: true,
       then: Yup.mixed().required('Opening time is required')
     }),
-    closeTime: Yup.mixed().when('isOpen', {
-      is: true,
-      then: Yup.mixed().required('Closing time is required')
+    closeTime: Yup.mixed().when(['isOpen', 'openTime'], {
+      is: (isOpen, openTime) => isOpen && openTime,
+      then: Yup.mixed()
+        .required('Closing time is required')
+        .test(
+          'is-after-open',
+          'Closing time must be after opening time',
+          function(closeTime) {
+            return isClosingAfterOpening(closeTime, this.parent.openTime);
+          }
+        )
     })
   }),
   tuesday: Yup.object().shape({
@@ -37,9 +61,17 @@ const BusinessHoursSchema = Yup.object().shape({
       is: true,
       then: Yup.mixed().required('Opening time is required')
     }),
-    closeTime: Yup.mixed().when('isOpen', {
-      is: true,
-      then: Yup.mixed().required('Closing time is required')
+    closeTime: Yup.mixed().when(['isOpen', 'openTime'], {
+      is: (isOpen, openTime) => isOpen && openTime,
+      then: Yup.mixed()
+        .required('Closing time is required')
+        .test(
+          'is-after-open',
+          'Closing time must be after opening time',
+          function(closeTime) {
+            return isClosingAfterOpening(closeTime, this.parent.openTime);
+          }
+        )
     })
   }),
   wednesday: Yup.object().shape({
@@ -48,9 +80,17 @@ const BusinessHoursSchema = Yup.object().shape({
       is: true,
       then: Yup.mixed().required('Opening time is required')
     }),
-    closeTime: Yup.mixed().when('isOpen', {
-      is: true,
-      then: Yup.mixed().required('Closing time is required')
+    closeTime: Yup.mixed().when(['isOpen', 'openTime'], {
+      is: (isOpen, openTime) => isOpen && openTime,
+      then: Yup.mixed()
+        .required('Closing time is required')
+        .test(
+          'is-after-open',
+          'Closing time must be after opening time',
+          function(closeTime) {
+            return isClosingAfterOpening(closeTime, this.parent.openTime);
+          }
+        )
     })
   }),
   thursday: Yup.object().shape({
@@ -59,9 +99,17 @@ const BusinessHoursSchema = Yup.object().shape({
       is: true,
       then: Yup.mixed().required('Opening time is required')
     }),
-    closeTime: Yup.mixed().when('isOpen', {
-      is: true,
-      then: Yup.mixed().required('Closing time is required')
+    closeTime: Yup.mixed().when(['isOpen', 'openTime'], {
+      is: (isOpen, openTime) => isOpen && openTime,
+      then: Yup.mixed()
+        .required('Closing time is required')
+        .test(
+          'is-after-open',
+          'Closing time must be after opening time',
+          function(closeTime) {
+            return isClosingAfterOpening(closeTime, this.parent.openTime);
+          }
+        )
     })
   }),
   friday: Yup.object().shape({
@@ -70,9 +118,17 @@ const BusinessHoursSchema = Yup.object().shape({
       is: true,
       then: Yup.mixed().required('Opening time is required')
     }),
-    closeTime: Yup.mixed().when('isOpen', {
-      is: true,
-      then: Yup.mixed().required('Closing time is required')
+    closeTime: Yup.mixed().when(['isOpen', 'openTime'], {
+      is: (isOpen, openTime) => isOpen && openTime,
+      then: Yup.mixed()
+        .required('Closing time is required')
+        .test(
+          'is-after-open',
+          'Closing time must be after opening time',
+          function(closeTime) {
+            return isClosingAfterOpening(closeTime, this.parent.openTime);
+          }
+        )
     })
   }),
   saturday: Yup.object().shape({
@@ -81,9 +137,17 @@ const BusinessHoursSchema = Yup.object().shape({
       is: true,
       then: Yup.mixed().required('Opening time is required')
     }),
-    closeTime: Yup.mixed().when('isOpen', {
-      is: true,
-      then: Yup.mixed().required('Closing time is required')
+    closeTime: Yup.mixed().when(['isOpen', 'openTime'], {
+      is: (isOpen, openTime) => isOpen && openTime,
+      then: Yup.mixed()
+        .required('Closing time is required')
+        .test(
+          'is-after-open',
+          'Closing time must be after opening time',
+          function(closeTime) {
+            return isClosingAfterOpening(closeTime, this.parent.openTime);
+          }
+        )
     })
   }),
   sunday: Yup.object().shape({
@@ -92,9 +156,17 @@ const BusinessHoursSchema = Yup.object().shape({
       is: true,
       then: Yup.mixed().required('Opening time is required')
     }),
-    closeTime: Yup.mixed().when('isOpen', {
-      is: true,
-      then: Yup.mixed().required('Closing time is required')
+    closeTime: Yup.mixed().when(['isOpen', 'openTime'], {
+      is: (isOpen, openTime) => isOpen && openTime,
+      then: Yup.mixed()
+        .required('Closing time is required')
+        .test(
+          'is-after-open',
+          'Closing time must be after opening time',
+          function(closeTime) {
+            return isClosingAfterOpening(closeTime, this.parent.openTime);
+          }
+        )
     })
   }),
   customMessage: Yup.string().max(500, 'Message must be 500 characters or less')
@@ -207,6 +279,15 @@ const BusinessHoursForm = ({ initialData = {}, onSubmit, onBack }) => {
                       </>
                     )}
                   </Grid>
+                  
+                  {/* Show validation error for time comparison */}
+                  {touched[day]?.closeTime && errors[day]?.closeTime && values[day].isOpen && (
+                    <Box sx={{ pl: { sm: 3 }, mt: 1 }}>
+                      <Alert severity="error" sx={{ py: 0 }}>
+                        {errors[day]?.closeTime}
+                      </Alert>
+                    </Box>
+                  )}
                 </Box>
               ))}
               

@@ -19,6 +19,8 @@ import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../../contexts/AuthContext';
 import businessApi from '../../api/business';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { enhancedApiCall } from '../../utils/ErrorHandling';
 
 const BusinessProfileSchema = Yup.object().shape({
   businessName: Yup.string().required('Business name is required'),
@@ -66,30 +68,29 @@ const BusinessProfilePage = () => {
 
   useEffect(() => {
     const fetchBusinessProfile = async () => {
-      try {
-        setLoading(true);
-        const response = await businessApi.getBusinessProfile();
-        setProfileData(response);
-      } catch (error) {
-        console.error('Error fetching business profile:', error);
-        setError('Failed to load business profile. Please try again later.');
-        // Set some default data for demonstration
-        setProfileData({
-          businessName: currentUser?.businessName || '',
-          industry: '',
-          address: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          phoneNumber: '',
-          website: '',
-          description: ''
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
+try {
+    setLoading(true);
+    const response = await enhancedApiCall(businessApi.getBusinessProfile);
+    setProfileData(response);
+  } catch (error) {
+    console.error('Error fetching business profile:', error);
+    setError('Failed to load business profile. Please try again later.');
+    // Set some default data for demonstration
+    setProfileData({
+      businessName: currentUser?.businessName || '',
+      industry: '',
+      address: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      phoneNumber: '',
+      website: '',
+      description: ''
+    });
+  } finally {
+    setLoading(false);
+  }
+};
     fetchBusinessProfile();
   }, [currentUser]);
 
@@ -111,11 +112,7 @@ const BusinessProfilePage = () => {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingSpinner message="Loading business profile..." />;
   }
 
   return (
