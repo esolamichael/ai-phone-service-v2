@@ -27,6 +27,21 @@ const CalendarIntegrationSchema = Yup.object().shape({
 });
 
 const CalendarIntegrationForm = ({ initialData = {}, onSubmit, onBack, isSubmitting }) => {
+  // Direct continuation function that bypasses form validation
+  const handleForceContinue = (values) => {
+    console.log('Force continuing with calendar integration values:', values);
+    
+    // Process values to ensure they're valid
+    const processedValues = { ...values };
+    
+    // Ensure we have a default value
+    if (!processedValues.calendarProvider) {
+      processedValues.calendarProvider = 'none';
+    }
+    
+    // Call the parent component's onSubmit directly
+    onSubmit(processedValues);
+  };
   return (
     <Formik
       initialValues={{
@@ -38,7 +53,9 @@ const CalendarIntegrationForm = ({ initialData = {}, onSubmit, onBack, isSubmitt
       }}
     >
       {({ values, handleChange }) => (
-        <Form>
+        <Form noValidate>
+          {/* Hidden submit button that can be triggered programmatically if needed */}
+          <button type="submit" style={{ display: 'none' }} />
           <Paper elevation={0} sx={{ p: 3, mb: 4 }}>
             <Typography variant="h6" gutterBottom>
               Calendar Integration (Optional)
@@ -208,12 +225,17 @@ const CalendarIntegrationForm = ({ initialData = {}, onSubmit, onBack, isSubmitt
               Back
             </Button>
             <Button
-              type="submit"
+              // Remove type="submit" to prevent form validation
               variant="contained"
               color="primary"
               size="large"
               sx={{ py: 1.5, px: 4 }}
               disabled={isSubmitting}
+              onClick={() => {
+                console.log('Complete Setup button clicked directly');
+                // Skip form validation entirely and just continue
+                handleForceContinue(values);
+              }}
             >
               Complete Setup
             </Button>

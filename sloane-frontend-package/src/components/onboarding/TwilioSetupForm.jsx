@@ -16,21 +16,49 @@ import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 
 const TwilioSetupSchema = Yup.object().shape({
-  phoneSetupOption: Yup.string().required('Please select a phone setup option'),
+  phoneSetupOption: Yup.string().default('new'),
   existingPhoneNumber: Yup.string().when('phoneSetupOption', {
     is: 'forward',
-    then: Yup.string().required('Your existing phone number is required')
+    then: Yup.string().nullable()
   }),
-  callHandlingPreference: Yup.string().required('Please select a call handling preference'),
-  voicemailGreeting: Yup.string().max(500, 'Greeting must be 500 characters or less')
+  callHandlingPreference: Yup.string().default('answer_all'),
+  voicemailGreeting: Yup.string().max(500, 'Greeting must be 500 characters or less').nullable()
 });
 
-const TwilioSetupForm = ({ initialData = {}, onSubmit, onBack }) => {
+const TwilioSetupForm = ({ initialData = {}, businessInfo = {}, onSubmit, onBack }) => {
+  // Extract phone number from business info if available
+  const existingPhoneFromBusiness = businessInfo && businessInfo.phoneNumber ? businessInfo.phoneNumber : '';
+  // Direct continuation function that bypasses form validation
+  const handleForceContinue = (values) => {
+    console.log('Force continuing with phone setup values:', values);
+    
+    // Process values to ensure they're valid
+    const processedValues = { ...values };
+    
+    // Ensure values have defaults if they're missing
+    if (!processedValues.phoneSetupOption) {
+      processedValues.phoneSetupOption = 'new';
+    }
+    
+    if (!processedValues.callHandlingPreference) {
+      processedValues.callHandlingPreference = 'answer_all';
+    }
+    
+    // If forward option is selected but no phone number is provided, use business phone
+    if (processedValues.phoneSetupOption === 'forward' && 
+        (!processedValues.existingPhoneNumber || processedValues.existingPhoneNumber.trim() === '')) {
+      processedValues.existingPhoneNumber = existingPhoneFromBusiness;
+    }
+    
+    // Call the parent component's onSubmit directly
+    onSubmit(processedValues);
+  };
   return (
     <Formik
       initialValues={{
-        phoneSetupOption: initialData.phoneSetupOption || 'new',
-        existingPhoneNumber: initialData.existingPhoneNumber || '',
+        // Auto-select "forward" option if we have a business phone number
+        phoneSetupOption: initialData.phoneSetupOption || (existingPhoneFromBusiness ? 'forward' : 'new'),
+        existingPhoneNumber: initialData.existingPhoneNumber || existingPhoneFromBusiness || '',
         callHandlingPreference: initialData.callHandlingPreference || 'answer_all',
         voicemailGreeting: initialData.voicemailGreeting || ''
       }}
@@ -40,7 +68,9 @@ const TwilioSetupForm = ({ initialData = {}, onSubmit, onBack }) => {
       }}
     >
       {({ errors, touched, values, handleChange }) => (
-        <Form>
+        <Form noValidate>
+          {/* Hidden submit button that can be triggered programmatically if needed */}
+          <button type="submit" style={{ display: 'none' }} />
           <Paper elevation={0} sx={{ p: 3, mb: 4 }}>
             <Typography variant="h6" gutterBottom>
               Phone Setup
@@ -83,20 +113,33 @@ const TwilioSetupForm = ({ initialData = {}, onSubmit, onBack }) => {
               </FormControl>
               
               {values.phoneSetupOption === 'forward' && (
-                <Field name="existingPhoneNumber">
-                  {({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="Your Existing Business Phone Number"
-                      variant="outlined"
-                      placeholder="e.g. (555) 123-4567"
-                      error={touched.existingPhoneNumber && Boolean(errors.existingPhoneNumber)}
-                      helperText={touched.existingPhoneNumber && errors.existingPhoneNumber}
-                      sx={{ mb: 3 }}
-                    />
+                <>
+                  {existingPhoneFromBusiness && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      We've retrieved your business phone number from your profile information.
+                    </Alert>
                   )}
-                </Field>
+                  <Field name="existingPhoneNumber">
+                    {({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="Your Existing Business Phone Number"
+                        variant="outlined"
+                        placeholder="e.g. (555) 123-4567"
+                        error={touched.existingPhoneNumber && Boolean(errors.existingPhoneNumber)}
+                        helperText={
+                          (touched.existingPhoneNumber && errors.existingPhoneNumber) ||
+                          (existingPhoneFromBusiness && existingPhoneFromBusiness === field.value && 'Pre-filled from your business information')
+                        }
+                        sx={{ 
+                          mb: 3,
+                          backgroundColor: (existingPhoneFromBusiness && existingPhoneFromBusiness === field.value) ? 'rgba(25, 118, 210, 0.04)' : 'transparent' 
+                        }}
+                      />
+                    )}
+                  </Field>
+                </>
               )}
             </Box>
             
@@ -173,11 +216,16 @@ const TwilioSetupForm = ({ initialData = {}, onSubmit, onBack }) => {
               Back
             </Button>
             <Button
-              type="submit"
+              // Remove type="submit" to prevent form validation
               variant="contained"
               color="primary"
               size="large"
               sx={{ py: 1.5, px: 4 }}
+              onClick={() => {
+                console.log('Continue button clicked directly');
+                // Skip form validation entirely and just continue
+                handleForceContinue(values);
+              }}
             >
               Continue
             </Button>

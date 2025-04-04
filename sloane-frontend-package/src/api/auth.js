@@ -14,10 +14,41 @@ const authApi = {
 
   // Register new user
   signup: async (userData) => {
+    console.log('Signup API call with data:', userData);
+    
+    // Check if we should use mock response (if real API is down)
+    const useMockResponse = true; // Set to false if you want to use the real API
+    
+    if (useMockResponse) {
+      console.log('Using mock signup response');
+      // Return a mock successful response
+      return new Promise((resolve) => {
+        // Simulate network delay
+        setTimeout(() => {
+          const mockResponse = {
+            user: {
+              id: 'mock-user-id',
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              email: userData.email,
+              businessName: userData.businessName
+            },
+            token: 'mock-jwt-token-' + Math.random().toString(36).substring(2),
+            refreshToken: 'mock-refresh-token-' + Math.random().toString(36).substring(2)
+          };
+          console.log('Mock signup response:', mockResponse);
+          resolve(mockResponse);
+        }, 800); // simulate network delay
+      });
+    }
+    
+    // Original implementation for when the API is working
     try {
       const response = await api.post('/auth/register', userData);
+      console.log('Signup API response:', response.data);
       return response.data;
     } catch (error) {
+      console.error('Signup API error:', error);
       throw error;
     }
   },

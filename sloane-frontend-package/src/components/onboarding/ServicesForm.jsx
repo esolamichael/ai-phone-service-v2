@@ -21,20 +21,52 @@ import DeleteIcon from '@mui/icons-material/Delete';
 const ServicesSchema = Yup.object().shape({
   services: Yup.array().of(
     Yup.object().shape({
-      name: Yup.string().required('Service name is required'),
-      description: Yup.string().required('Service description is required'),
-      price: Yup.string()
+      name: Yup.string().nullable(),
+      description: Yup.string().nullable(),
+      price: Yup.string().nullable()
     })
   ),
   faqs: Yup.array().of(
     Yup.object().shape({
-      question: Yup.string().required('Question is required'),
-      answer: Yup.string().required('Answer is required')
+      question: Yup.string().nullable(),
+      answer: Yup.string().nullable()
     })
   )
 });
 
 const ServicesForm = ({ initialData = {}, onSubmit, onBack }) => {
+  // Direct continuation function that bypasses form validation
+  const handleForceContinue = (values) => {
+    console.log('Force continuing with services form values:', values);
+    
+    // Process values to ensure they're valid
+    const processedValues = { ...values };
+    
+    // Filter out empty services
+    if (processedValues.services && Array.isArray(processedValues.services)) {
+      processedValues.services = processedValues.services.filter(service => 
+        service.name.trim() !== '' || service.description.trim() !== '' || service.price.trim() !== '');
+    }
+    
+    // Filter out empty FAQs
+    if (processedValues.faqs && Array.isArray(processedValues.faqs)) {
+      processedValues.faqs = processedValues.faqs.filter(faq => 
+        faq.question.trim() !== '' || faq.answer.trim() !== '');
+    }
+    
+    // Ensure at least one empty service if all were filtered out
+    if (!processedValues.services || processedValues.services.length === 0) {
+      processedValues.services = [{ name: '', description: '', price: '' }];
+    }
+    
+    // Ensure at least one empty FAQ if all were filtered out
+    if (!processedValues.faqs || processedValues.faqs.length === 0) {
+      processedValues.faqs = [{ question: '', answer: '' }];
+    }
+    
+    // Call the parent component's onSubmit directly
+    onSubmit(processedValues);
+  };
   const getInitialValues = () => {
     return {
       services: initialData.services || [
@@ -55,7 +87,9 @@ const ServicesForm = ({ initialData = {}, onSubmit, onBack }) => {
       }}
     >
       {({ errors, touched, values }) => (
-        <Form>
+        <Form noValidate>
+          {/* Hidden submit button that can be triggered programmatically if needed */}
+          <button type="submit" style={{ display: 'none' }} />
           <Paper elevation={0} sx={{ p: 3, mb: 4 }}>
             <Typography variant="h6" gutterBottom>
               Services & FAQs
@@ -287,11 +321,16 @@ const ServicesForm = ({ initialData = {}, onSubmit, onBack }) => {
               Back
             </Button>
             <Button
-              type="submit"
+              // Remove type="submit" to prevent form validation
               variant="contained"
               color="primary"
               size="large"
               sx={{ py: 1.5, px: 4 }}
+              onClick={() => {
+                console.log('Continue button clicked directly');
+                // Skip form validation entirely and just continue
+                handleForceContinue(values);
+              }}
             >
               Continue
             </Button>

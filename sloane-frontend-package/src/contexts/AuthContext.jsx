@@ -92,17 +92,35 @@ export function AuthProvider({ children }) {
   const signup = async (userData) => {
     setError(null);
     try {
+      console.log('AuthContext: Starting signup process');
       const response = await authApi.signup(userData);
-      localStorage.setItem('token', response.token);
+      console.log('AuthContext: Received signup response', response);
+      
+      // Store tokens in localStorage
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+      } else {
+        console.error('AuthContext: No token in response');
+      }
+      
       if (response.refreshToken) {
         localStorage.setItem('refreshToken', response.refreshToken);
       }
-      setCurrentUser({
-        ...response.user,
-        token: response.token
-      });
+      
+      // Update the current user state
+      if (response.user) {
+        setCurrentUser({
+          ...response.user,
+          token: response.token
+        });
+        console.log('AuthContext: User state updated');
+      } else {
+        console.error('AuthContext: No user data in response');
+      }
+      
       return response.user;
     } catch (err) {
+      console.error('AuthContext: Signup error', err);
       setError(err.message || 'Failed to sign up');
       throw err;
     }
