@@ -61,4 +61,77 @@ export const ErrorBoundary = ({ children }) => {
     }
 
     return (
-      <Container maxWidth="md"
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Paper sx={{ p: 4 }}>
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }}
+            action={
+              showRetry ? (
+                <Button 
+                  color="inherit" 
+                  size="small" 
+                  onClick={handleRetry}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <CircularProgress size={24} /> : 'RETRY'}
+                </Button>
+              ) : null
+            }
+          >
+            <AlertTitle>{errorTitle}</AlertTitle>
+            {errorMessage}
+          </Alert>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <Button 
+              variant="outlined" 
+              onClick={handleGoToDashboard}
+              sx={{ mr: 2 }}
+            >
+              Go to Dashboard
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={() => window.location.reload()}
+            >
+              Refresh Page
+            </Button>
+          </Box>
+        </Paper>
+      </Container>
+    );
+  }
+
+  // Wrap children with error handling context
+  return React.cloneElement(children, { 
+    onError: handleApiError,
+    setIsLoading
+  });
+};
+
+// Enhanced API call function
+export const enhancedApiCall = async (apiFunction, ...args) => {
+  try {
+    // Check for network connectivity
+    if (!navigator.onLine) {
+      throw new Error('network');
+    }
+    
+    const response = await apiFunction(...args);
+    return response;
+  } catch (error) {
+    // Enhanced error handling
+    console.error('API call failed:', error);
+    
+    // Determine error type
+    if (!navigator.onLine) {
+      error.name = 'NetworkError';
+    }
+    
+    // Rethrow with additional context
+    throw error;
+  }
+};
+
+export default ErrorBoundary;
