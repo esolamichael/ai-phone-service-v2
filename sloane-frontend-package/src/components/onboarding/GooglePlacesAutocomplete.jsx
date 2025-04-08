@@ -23,7 +23,8 @@ import businessApi from '../../api/business';
 
 // Constant for Google Maps API key - replace with your API key for direct testing
 // In production, this should be loaded from environment variables or your Netlify function
-const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
+// For now, we're using a direct API key to ensure functionality
+const GOOGLE_MAPS_API_KEY = 'YOUR_ACTUAL_API_KEY'; // Replace this with your actual Google Maps API key
 
 // Sample business data for fallback when Google Places API is unavailable
 const SAMPLE_BUSINESSES = [
@@ -92,44 +93,16 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
       try {
         console.log('📡 Starting to load Google Maps API...');
         
-        // Get API key - use direct key or try to fetch from Netlify
+        // Get API key directly from constant - we're using a hardcoded key for now
         let apiKey = GOOGLE_MAPS_API_KEY;
-        console.log('Direct API key available:', !!apiKey);
         
-        // If no direct key available, try the Netlify function
-        if (!apiKey) {
-          try {
-            console.log('🔑 No direct API key, fetching from Netlify function...');
-            const netlifyURL = '/.netlify/functions/getGoogleApiKey';
-            console.log('Netlify function URL:', netlifyURL);
-            
-            const response = await fetch(netlifyURL);
-            console.log('Netlify function response status:', response.status);
-            
-            if (!response.ok) {
-              throw new Error(`Failed to fetch API key: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('Netlify function response data structure:', Object.keys(data));
-            
-            apiKey = data.apiKey;
-            
-            if (!apiKey) {
-              throw new Error('No API key received from server');
-            }
-            
-            console.log('✅ Successfully received API key from Netlify function');
-          } catch (error) {
-            console.error('❌ Error fetching API key from Netlify:', error);
-            console.error('Error details:', {
-              message: error.message,
-              stack: error.stack
-            });
-            setGoogleApiError('Failed to get Google Maps API key. Using fallback data.');
-            return;
-          }
+        if (!apiKey || apiKey === 'YOUR_ACTUAL_API_KEY') {
+          console.error('❌ API key not properly replaced. Please update the GOOGLE_MAPS_API_KEY constant with your actual API key.');
+          setGoogleApiError('Google Maps API key not configured. Using fallback data.');
+          return;
         }
+        
+        console.log('✅ Using direct API key:', apiKey.substring(0, 4) + '...' + apiKey.substring(apiKey.length - 4));
         
         // Register our callback to be called when API loads
         window.googleMapsCallbacks = window.googleMapsCallbacks || [];
