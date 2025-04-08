@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout';
 import HomePage from './pages/landing/HomePage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
+import SignupRedirect from './components/redirects/SignupRedirect';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import OnboardingPage from './pages/onboarding/OnboardingPage';
@@ -26,19 +27,12 @@ function App() {
                 {/* Public routes */}
                 <Route index element={<HomePage />} />
                 <Route path="login" element={<LoginPage />} />
-                <Route path="signup" element={<SignupPage />} />
+                <Route path="signup" element={<SignupRedirect />} />
                 <Route path="forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="reset-password/:token" element={<ResetPasswordPage />} />
                 
-                {/* Protected routes */}
-                <Route 
-                  path="onboarding" 
-                  element={
-                    <ProtectedRoute>
-                      <OnboardingPage />
-                    </ProtectedRoute>
-                  } 
-                />
+                {/* Make onboarding public for easier access */}
+                <Route path="onboarding" element={<OnboardingPage />} />
                 <Route 
                   path="dashboard/*" 
                   element={
