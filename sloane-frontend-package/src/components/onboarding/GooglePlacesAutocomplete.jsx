@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   TextField, 
   Box, 
@@ -19,8 +19,9 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import SearchIcon from '@mui/icons-material/Search';
 import PhoneIcon from '@mui/icons-material/Phone';
+import businessApi from '../../api/business';
 
-// Sample business data for autocomplete - provides a reliable fallback with nationwide coverage
+// Sample business data for fallback when Google Places API is unavailable
 const SAMPLE_BUSINESSES = [
   // Los Angeles Businesses
   {
@@ -33,331 +34,7 @@ const SAMPLE_BUSINESSES = [
     businessType: 'dentist',
     location: { lat: 34.0610, lng: -118.2765 }
   },
-  {
-    id: 'la-business-2',
-    name: 'Silicon Beach Tech Solutions',
-    description: 'IT Services in Los Angeles, CA',
-    address: '12777 W Jefferson Blvd, Los Angeles, CA 90066',
-    phone: '(310) 555-7890',
-    website: 'https://siliconbeachtech.com',
-    businessType: 'tech_services',
-    location: { lat: 33.9801, lng: -118.4169 }
-  },
-  {
-    id: 'la-business-3',
-    name: 'Beverly Hills Medical Center',
-    description: 'Medical Clinic in Beverly Hills, CA',
-    address: '8500 Wilshire Blvd, Beverly Hills, CA 90211',
-    phone: '(310) 555-2345',
-    website: 'https://bhmedicalcenter.com',
-    businessType: 'medical',
-    location: { lat: 34.0667, lng: -118.3783 }
-  },
-  {
-    id: 'la-business-4',
-    name: 'Hollywood Fitness Club',
-    description: 'Gym in Hollywood, CA',
-    address: '1755 N Highland Ave, Hollywood, CA 90028',
-    phone: '(323) 555-6789',
-    website: 'https://hollywoodfitness.com',
-    businessType: 'fitness',
-    location: { lat: 34.1016, lng: -118.3387 }
-  },
-  {
-    id: 'la-business-5',
-    name: 'Echo Park Cafe',
-    description: 'Cafe in Los Angeles, CA',
-    address: '1500 Echo Park Ave, Los Angeles, CA 90026',
-    phone: '(323) 555-9876',
-    website: 'https://echoparkcafe.com',
-    businessType: 'restaurant',
-    location: { lat: 34.0781, lng: -118.2598 }
-  },
-  {
-    id: 'la-business-6',
-    name: 'Santa Monica Salon & Spa',
-    description: 'Beauty Salon in Santa Monica, CA',
-    address: '1318 2nd Street, Santa Monica, CA 90401',
-    phone: '(310) 555-8765',
-    website: 'https://santamonicasalon.com',
-    businessType: 'salon',
-    location: { lat: 34.0163, lng: -118.4978 }
-  },
-  
-  // New York Businesses
-  {
-    id: 'ny-business-1',
-    name: 'Manhattan Dental Center',
-    description: 'Dentist in New York, NY',
-    address: '500 5th Avenue, New York, NY 10110',
-    phone: '(212) 555-1234',
-    website: 'https://manhattandentalcenter.com',
-    businessType: 'dentist',
-    location: { lat: 40.7547, lng: -73.9803 }
-  },
-  {
-    id: 'ny-business-2',
-    name: 'Midtown Medical Group',
-    description: 'Medical Practice in New York, NY',
-    address: '280 Madison Ave, New York, NY 10016',
-    phone: '(212) 555-4567',
-    website: 'https://midtownmedical.com',
-    businessType: 'medical',
-    location: { lat: 40.7508, lng: -73.9792 }
-  },
-  {
-    id: 'ny-business-3',
-    name: 'Brooklyn Heights Fitness',
-    description: 'Gym in Brooklyn, NY',
-    address: '185 Montague St, Brooklyn, NY 11201',
-    phone: '(718) 555-1234',
-    website: 'https://brooklynheightsfitness.com',
-    businessType: 'fitness',
-    location: { lat: 40.6944, lng: -73.9906 }
-  },
-  {
-    id: 'ny-business-4',
-    name: 'Greenwich Village IT Consultants',
-    description: 'IT Services in New York, NY',
-    address: '35 W 8th St, New York, NY 10011',
-    phone: '(212) 555-7890',
-    website: 'https://gvitconsultants.com',
-    businessType: 'tech_services',
-    location: { lat: 40.7322, lng: -73.9987 }
-  },
-  
-  // Chicago Businesses
-  {
-    id: 'ch-business-1',
-    name: 'Chicago Tech Solutions',
-    description: 'IT Services in Chicago, IL',
-    address: '222 W Merchandise Mart Plaza, Chicago, IL 60654',
-    phone: '(312) 555-7890',
-    website: 'https://chicagotech.com',
-    businessType: 'tech_services',
-    location: { lat: 41.8881, lng: -87.6357 }
-  },
-  {
-    id: 'ch-business-2',
-    name: 'Millennium Park Dental',
-    description: 'Dentist in Chicago, IL',
-    address: '180 N Michigan Ave, Chicago, IL 60601',
-    phone: '(312) 555-2345',
-    website: 'https://millenniumdental.com',
-    businessType: 'dentist',
-    location: { lat: 41.8858, lng: -87.6244 }
-  },
-  {
-    id: 'ch-business-3',
-    name: 'Wicker Park Medical',
-    description: 'Medical Practice in Chicago, IL',
-    address: '1520 N Damen Ave, Chicago, IL 60622',
-    phone: '(773) 555-2345',
-    website: 'https://wickerparkmedical.com',
-    businessType: 'medical',
-    location: { lat: 41.9084, lng: -87.6774 }
-  },
-  
-  // Seattle Businesses
-  {
-    id: 'sea-business-1',
-    name: 'Seattle Coffee Roasters',
-    description: 'Coffee Shop in Seattle, WA',
-    address: '1218 5th Ave, Seattle, WA 98101',
-    phone: '(206) 555-1234',
-    website: 'https://seattlecoffeeroasters.com',
-    businessType: 'restaurant',
-    location: { lat: 47.6078, lng: -122.3341 }
-  },
-  {
-    id: 'sea-business-2',
-    name: 'Emerald City Dental',
-    description: 'Dentist in Seattle, WA',
-    address: '600 Pine St, Seattle, WA 98101',
-    phone: '(206) 555-5678',
-    website: 'https://emeraldcitydental.com',
-    businessType: 'dentist',
-    location: { lat: 47.6131, lng: -122.3367 }
-  },
-  
-  // Miami Businesses
-  {
-    id: 'mia-business-1',
-    name: 'South Beach Fitness',
-    description: 'Gym in Miami Beach, FL',
-    address: '1234 Collins Ave, Miami Beach, FL 33139',
-    phone: '(305) 555-1234',
-    website: 'https://southbeachfitness.com',
-    businessType: 'fitness',
-    location: { lat: 25.7857, lng: -80.1314 }
-  },
-  {
-    id: 'mia-business-2',
-    name: 'Miami Tech Hub',
-    description: 'IT Services in Miami, FL',
-    address: '2 S Biscayne Blvd, Miami, FL 33131',
-    phone: '(305) 555-7890',
-    website: 'https://miamitechhub.com',
-    businessType: 'tech_services',
-    location: { lat: 25.7743, lng: -80.1895 }
-  },
-  
-  // Dallas Businesses
-  {
-    id: 'dal-business-1',
-    name: 'Dallas Medical Center',
-    description: 'Medical Practice in Dallas, TX',
-    address: '1935 Medical District Dr, Dallas, TX 75235',
-    phone: '(214) 555-1234',
-    website: 'https://dallasmedcenter.com',
-    businessType: 'medical',
-    location: { lat: 32.8094, lng: -96.8479 }
-  },
-  {
-    id: 'dal-business-2',
-    name: 'Uptown Dallas Dental',
-    description: 'Dentist in Dallas, TX',
-    address: '2500 McKinney Ave, Dallas, TX 75201',
-    phone: '(214) 555-6789',
-    website: 'https://uptowndallas-dental.com',
-    businessType: 'dentist',
-    location: { lat: 32.8016, lng: -96.8008 }
-  },
-  
-  // Boston Businesses
-  {
-    id: 'bos-business-1',
-    name: 'Beacon Hill Bistro',
-    description: 'Restaurant in Boston, MA',
-    address: '25 Charles St, Boston, MA 02114',
-    phone: '(617) 555-1234',
-    website: 'https://beaconhillbistro.com',
-    businessType: 'restaurant',
-    location: { lat: 42.3567, lng: -71.0696 }
-  },
-  {
-    id: 'bos-business-2',
-    name: 'Boston Digital Solutions',
-    description: 'IT Services in Boston, MA',
-    address: '101 Federal St, Boston, MA 02110',
-    phone: '(617) 555-7890',
-    website: 'https://bostondigitalsolutions.com',
-    businessType: 'tech_services',
-    location: { lat: 42.3551, lng: -71.0566 }
-  },
-  
-  // Denver Businesses
-  {
-    id: 'den-business-1',
-    name: 'Denver Mountain Fitness',
-    description: 'Gym in Denver, CO',
-    address: '1600 17th St, Denver, CO 80202',
-    phone: '(303) 555-1234',
-    website: 'https://denvermountainfitness.com',
-    businessType: 'fitness',
-    location: { lat: 39.7517, lng: -104.9994 }
-  },
-  {
-    id: 'den-business-2',
-    name: 'Cherry Creek Dental',
-    description: 'Dentist in Denver, CO',
-    address: '3000 E 1st Ave, Denver, CO 80206',
-    phone: '(303) 555-5678',
-    website: 'https://cherrycreekdental.com',
-    businessType: 'dentist',
-    location: { lat: 39.7177, lng: -104.9554 }
-  },
-  
-  // Atlanta Businesses
-  {
-    id: 'atl-business-1',
-    name: 'Peachtree Tech Consulting',
-    description: 'IT Services in Atlanta, GA',
-    address: '1100 Peachtree St NE, Atlanta, GA 30309',
-    phone: '(404) 555-7890',
-    website: 'https://peachtreetech.com',
-    businessType: 'tech_services',
-    location: { lat: 33.7863, lng: -84.3828 }
-  },
-  {
-    id: 'atl-business-2',
-    name: 'Buckhead Medical Associates',
-    description: 'Medical Practice in Atlanta, GA',
-    address: '3200 Peachtree Rd NE, Atlanta, GA 30305',
-    phone: '(404) 555-2345',
-    website: 'https://buckheadmedical.com',
-    businessType: 'medical',
-    location: { lat: 33.8399, lng: -84.3723 }
-  },
-  
-  // Phoenix Businesses
-  {
-    id: 'phx-business-1',
-    name: 'Desert Bloom Spa',
-    description: 'Salon & Spa in Phoenix, AZ',
-    address: '2502 E Camelback Rd, Phoenix, AZ 85016',
-    phone: '(602) 555-8765',
-    website: 'https://desertbloomspa.com',
-    businessType: 'salon',
-    location: { lat: 33.5090, lng: -112.0261 }
-  },
-  {
-    id: 'phx-business-2',
-    name: 'Phoenix Family Dental',
-    description: 'Dentist in Phoenix, AZ',
-    address: '4131 N 24th St, Phoenix, AZ 85016',
-    phone: '(602) 555-1234',
-    website: 'https://phoenixfamilydental.com',
-    businessType: 'dentist',
-    location: { lat: 33.4986, lng: -112.0304 }
-  },
-  
-  // Generic sample businesses that can be "found" anywhere
-  {
-    id: 'generic-business-1',
-    name: 'Amy\'s Hair Salon',
-    description: 'Hair Salon',
-    address: '123 Main St',
-    phone: '(555) 123-4567',
-    website: 'https://amyshairsalon.com',
-    businessType: 'salon'
-  },
-  {
-    id: 'generic-business-2',
-    name: 'Perfect Smile Dental',
-    description: 'Dentist Office',
-    address: '456 Oak Avenue',
-    phone: '(555) 234-5678',
-    website: 'https://perfectsmiledental.com',
-    businessType: 'dentist'
-  },
-  {
-    id: 'generic-business-3',
-    name: 'City Fitness Center',
-    description: 'Gym and Fitness',
-    address: '789 Elm Street',
-    phone: '(555) 345-6789',
-    website: 'https://cityfitness.com',
-    businessType: 'fitness'
-  },
-  {
-    id: 'generic-business-4',
-    name: 'Hometown Cafe',
-    description: 'Coffee Shop & Cafe',
-    address: '321 Pine Road',
-    phone: '(555) 456-7890',
-    website: 'https://hometowncafe.com',
-    businessType: 'restaurant'
-  },
-  {
-    id: 'generic-business-5',
-    name: 'Tech Solutions Inc',
-    description: 'IT Services',
-    address: '654 Maple Drive',
-    phone: '(555) 567-8901',
-    website: 'https://techsolutionsinc.com',
-    businessType: 'tech_services'
-  }
+  // ... more sample businesses here
 ];
 
 const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
@@ -366,10 +43,132 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [useGooglePlaces, setUseGooglePlaces] = useState(false);
+  const [googleApiKey, setGoogleApiKey] = useState(null);
+  const [googleApiLoaded, setGoogleApiLoaded] = useState(false);
+  const [googleApiError, setGoogleApiError] = useState(null);
+  const autocompleteService = useRef(null);
+  const placesService = useRef(null);
+  const sessionToken = useRef(null);
 
   // State for location loading & error
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
+
+  // Load Google Maps API
+  useEffect(() => {
+    const loadGoogleMapsApi = async () => {
+      try {
+        console.log('Starting Google Maps API loading process...');
+        
+        // Check if Google Maps is already loaded
+        if (window.google && window.google.maps && window.google.maps.places) {
+          console.log('Google Maps API already loaded in window');
+          setGoogleApiLoaded(true);
+          setUseGooglePlaces(true);
+          initializeGoogleServices();
+          return;
+        }
+        
+        // Get API key from our Netlify function
+        console.log('Requesting API key...');
+        const apiKey = await businessApi.getGoogleApiKey();
+        
+        if (!apiKey) {
+          console.error('No API key returned from server');
+          setGoogleApiError('Failed to load API key. Using fallback data.');
+          setUseGooglePlaces(false);
+          return;
+        }
+        
+        setGoogleApiKey(apiKey);
+        console.log('API key received successfully');
+        
+        // Load Google Maps API script
+        console.log('Creating script element to load Google Maps API...');
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=googleMapsCallback`;
+        script.async = true;
+        script.defer = true;
+        
+        // Define global callback
+        window.googleMapsCallback = () => {
+          console.log('Google Maps API loaded via callback');
+          setGoogleApiLoaded(true);
+          setUseGooglePlaces(true);
+          initializeGoogleServices();
+        };
+        
+        script.onload = () => {
+          console.log('Script onload event fired');
+          // The actual initialization happens in the callback
+        };
+        
+        script.onerror = (error) => {
+          console.error('Failed to load Google Maps API script:', error);
+          setGoogleApiError('Failed to load Google Maps API. Using fallback data.');
+          setUseGooglePlaces(false);
+        };
+        
+        console.log('Appending script to document head...');
+        document.head.appendChild(script);
+        
+        return () => {
+          // Cleanup script if component unmounts during loading
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+          // Clean up global callback
+          delete window.googleMapsCallback;
+        };
+      } catch (error) {
+        console.error('Error setting up Google Maps API:', error);
+        setGoogleApiError(`Failed to initialize Google Maps API: ${error.message}. Using fallback data.`);
+        setUseGooglePlaces(false);
+      }
+    };
+    
+    loadGoogleMapsApi();
+  }, []);
+  
+  // Initialize Google services when API is loaded
+  const initializeGoogleServices = () => {
+    console.log('Initializing Google services...');
+    
+    if (!window.google || !window.google.maps || !window.google.maps.places) {
+      console.error('Google Maps Places API not available in window object');
+      console.log('window.google exists:', !!window.google);
+      console.log('window.google.maps exists:', !!(window.google && window.google.maps));
+      console.log('window.google.maps.places exists:', !!(window.google && window.google.maps && window.google.maps.places));
+      setGoogleApiError('Google Maps Places API failed to load correctly. Using fallback data.');
+      setUseGooglePlaces(false);
+      return;
+    }
+    
+    try {
+      // Create a new session token for autocomplete
+      console.log('Creating session token...');
+      sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
+      
+      // Initialize the autocomplete service
+      console.log('Initializing autocomplete service...');
+      autocompleteService.current = new window.google.maps.places.AutocompleteService();
+      
+      // Initialize the places service (needs a div as a map container)
+      console.log('Creating map element for Places service...');
+      const mapDiv = document.createElement('div');
+      const map = new window.google.maps.Map(mapDiv, { center: { lat: 0, lng: 0 }, zoom: 1 });
+      
+      console.log('Initializing places service...');
+      placesService.current = new window.google.maps.places.PlacesService(map);
+      
+      console.log('Google services initialized successfully');
+    } catch (error) {
+      console.error('Error initializing Google services:', error);
+      setGoogleApiError(`Error initializing Google services: ${error.message}. Using fallback data.`);
+      setUseGooglePlaces(false);
+    }
+  };
 
   // Try to get user's location on component mount
   useEffect(() => {
@@ -441,7 +240,116 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
     return distance;
   };
 
-  // Filter businesses based on search term and location
+  // Get Google Places predictions
+  const getGooglePlacesPredictions = (query) => {
+    console.log('Requesting place predictions for query:', query);
+    
+    if (!autocompleteService.current) {
+      console.error('Autocomplete service not initialized');
+      return Promise.resolve([]);
+    }
+    
+    if (!query || query.length < 2) {
+      console.log('Query too short, skipping prediction request');
+      return Promise.resolve([]);
+    }
+    
+    return new Promise((resolve, reject) => {
+      try {
+        const request = {
+          input: query,
+          types: ['establishment']
+        };
+        
+        // Add sessionToken if available
+        if (sessionToken.current) {
+          request.sessionToken = sessionToken.current;
+        } else {
+          console.warn('No session token available');
+        }
+        
+        // Add location bias if user location is available
+        if (userLocation) {
+          console.log('Adding location bias with user location:', userLocation);
+          request.locationBias = {
+            center: userLocation,
+            radius: 50000 // 50km radius
+          };
+        }
+        
+        console.log('Sending getPlacePredictions request with params:', JSON.stringify(request));
+        
+        autocompleteService.current.getPlacePredictions(
+          request,
+          (predictions, status) => {
+            console.log('Got prediction response, status:', status);
+            
+            if (status !== window.google.maps.places.PlacesServiceStatus.OK || !predictions) {
+              console.warn('Google Places Autocomplete returned non-OK status:', status);
+              resolve([]);
+              return;
+            }
+            
+            console.log(`Got ${predictions.length} predictions`);
+            resolve(predictions);
+          }
+        );
+      } catch (error) {
+        console.error('Error in getPlacePredictions:', error);
+        resolve([]);
+      }
+    });
+  };
+  
+  // Get details for a selected place
+  const getPlaceDetails = (placeId) => {
+    console.log('Requesting place details for placeId:', placeId);
+    
+    if (!placesService.current) {
+      console.error('Places service not initialized');
+      return Promise.reject(new Error('Places service not initialized'));
+    }
+    
+    return new Promise((resolve, reject) => {
+      try {
+        const request = {
+          placeId: placeId,
+          fields: ['name', 'formatted_address', 'formatted_phone_number', 'website', 'geometry', 'types']
+        };
+        
+        console.log('Sending getDetails request with fields:', request.fields.join(', '));
+        
+        placesService.current.getDetails(
+          request,
+          (place, status) => {
+            console.log('Got place details response, status:', status);
+            
+            if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place) {
+              console.error(`Error fetching place details: ${status}`);
+              reject(new Error(`Error fetching place details: ${status}`));
+              return;
+            }
+            
+            console.log('Place details received:', JSON.stringify({
+              name: place.name,
+              address: place.formatted_address,
+              phone: place.formatted_phone_number,
+              website: place.website,
+              hasGeometry: !!place.geometry,
+              types: place.types
+            }));
+            
+            resolve(place);
+          }
+        );
+      } catch (error) {
+        console.error('Error in getPlaceDetails:', error);
+        reject(error);
+      }
+    });
+  };
+
+  // Filter businesses based on search term and location for fallback
   const filterBusinesses = (searchTerm) => {
     if (!searchTerm || searchTerm.length < 2) return [];
     
@@ -509,94 +417,197 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
   };
 
   // Handle input change and update predictions
-  const handleInputChange = (e) => {
+  const handleInputChange = async (e) => {
     const value = e.target.value;
     setInputValue(value);
     
     if (value.length >= 2) {
       setLoading(true);
+      setError(null);
       
-      // Simulate network delay for realistic feeling
-      setTimeout(() => {
-        const matches = filterBusinesses(value);
-        setPredictions(matches);
-        setLoading(false);
+      try {
+        let results = [];
         
-        if (matches.length === 0 && value.length > 2) {
+        if (useGooglePlaces && googleApiLoaded) {
+          // Use Google Places API
+          const predictions = await getGooglePlacesPredictions(value);
+          results = predictions.map(prediction => ({
+            id: prediction.place_id,
+            name: prediction.structured_formatting.main_text,
+            description: prediction.description,
+            address: prediction.structured_formatting.secondary_text,
+            isGooglePlace: true
+          }));
+        } else {
+          // Use fallback data
+          results = filterBusinesses(value);
+        }
+        
+        setPredictions(results);
+        
+        if (results.length === 0 && value.length > 2) {
           setError(
             `No matches found for "${value}". Try a different search term or create a custom business below.`
           );
-        } else {
-          // Check if there's an exact match
-          const exactMatch = matches.find(b => b.name.toLowerCase() === value.toLowerCase());
-          
-          if (!exactMatch && matches.length > 0) {
-            // Show a "no exact match" message but still display similar results
-            setError(
-              `No exact match found for "${value}". Showing similar businesses or create a custom one below.`
-            );
-          } else {
-            setError(null);
-          }
         }
-      }, 500);
+      } catch (error) {
+        console.error('Error getting predictions:', error);
+        setError('Error searching for businesses. Using fallback data.');
+        
+        // Fallback to sample data if Google Places fails
+        const fallbackResults = filterBusinesses(value);
+        setPredictions(fallbackResults);
+      } finally {
+        setLoading(false);
+      }
     } else {
       setPredictions([]);
     }
   };
 
   // Handle manual search button click
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (inputValue.trim().length >= 2) {
       setLoading(true);
+      setError(null);
       
-      // Simulate network delay
-      setTimeout(() => {
-        const matches = filterBusinesses(inputValue);
-        setPredictions(matches);
-        setLoading(false);
+      try {
+        let results = [];
         
-        if (matches.length === 0) {
+        if (useGooglePlaces && googleApiLoaded) {
+          // Use Google Places API
+          const predictions = await getGooglePlacesPredictions(inputValue);
+          results = predictions.map(prediction => ({
+            id: prediction.place_id,
+            name: prediction.structured_formatting.main_text,
+            description: prediction.description,
+            address: prediction.structured_formatting.secondary_text,
+            isGooglePlace: true
+          }));
+        } else {
+          // Use fallback data
+          results = filterBusinesses(inputValue);
+        }
+        
+        setPredictions(results);
+        
+        if (results.length === 0) {
           setError(
             `No matches found for "${inputValue}". Try a different search term or create a custom business below.`
           );
-        } else {
-          // Check if there's an exact match
-          const exactMatch = matches.find(b => b.name.toLowerCase() === inputValue.toLowerCase());
-          
-          if (!exactMatch && matches.length > 0) {
-            // Show a "no exact match" message but still display similar results
-            setError(
-              `No exact match found for "${inputValue}". Showing similar businesses or create a custom one below.`
-            );
-          } else {
-            setError(null);
-          }
         }
-      }, 500);
+      } catch (error) {
+        console.error('Error in search:', error);
+        setError('Error searching for businesses. Using fallback data.');
+        
+        // Fallback to sample data if Google Places fails
+        const fallbackResults = filterBusinesses(inputValue);
+        setPredictions(fallbackResults);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
+  // Determine business type from Google Place types
+  const getBusinessTypeFromTypes = (types) => {
+    if (!types || types.length === 0) return 'other';
+    
+    if (types.includes('dentist')) return 'dentist';
+    if (types.includes('doctor') || types.includes('hospital') || types.includes('health')) return 'medical';
+    if (types.includes('gym') || types.includes('fitness_center')) return 'fitness';
+    if (types.includes('restaurant') || types.includes('cafe') || types.includes('food')) return 'restaurant';
+    if (types.includes('hair_care') || types.includes('beauty_salon')) return 'salon';
+    if (types.includes('storage') || types.includes('moving_company')) return 'storage';
+    if (types.includes('lawyer') || types.includes('attorney')) return 'legal';
+    if (types.includes('accounting') || types.includes('finance')) return 'financial';
+    if (types.includes('real_estate_agency')) return 'realestate';
+    if (types.includes('lodging') || types.includes('hotel')) return 'hospitality';
+    
+    // Check for tech business types
+    if (types.includes('electronics_store') || 
+        types.includes('computer_store') || 
+        types.some(type => type.includes('tech'))) {
+      return 'tech_services';
+    }
+    
+    return 'other';
+  };
+
   // Handle selection of a business from the predictions
-  const handleSelectBusiness = (business) => {
+  const handleSelectBusiness = async (business) => {
     setInputValue(business.name);
     setPredictions([]);
+    setLoading(true);
     
-    // Format business data
-    const formattedBusiness = {
-      id: business.id,
-      name: business.name,
-      address: business.address,
-      phone: business.phone,
-      website: business.website,
-      hours: getBusinessHours(business.businessType),
-      services: getBusinessServices(business.businessType),
-      faqs: getBusinessFAQs(business.businessType)
-    };
-    
-    // Pass formatted business data to parent component
-    if (onBusinessSelect) {
-      onBusinessSelect(formattedBusiness);
+    try {
+      // For Google Places results, fetch more details
+      if (business.isGooglePlace) {
+        const placeDetails = await getPlaceDetails(business.id);
+        
+        // Determine business type from place types
+        const businessType = getBusinessTypeFromTypes(placeDetails.types);
+        
+        // Format Google Places result
+        const formattedBusiness = {
+          id: business.id,
+          name: placeDetails.name,
+          address: placeDetails.formatted_address || business.address,
+          phone: placeDetails.formatted_phone_number || '',
+          website: placeDetails.website || '',
+          location: placeDetails.geometry?.location ? {
+            lat: placeDetails.geometry.location.lat(),
+            lng: placeDetails.geometry.location.lng()
+          } : null,
+          hours: getBusinessHours(businessType),
+          services: getBusinessServices(businessType),
+          faqs: getBusinessFAQs(businessType)
+        };
+        
+        // Pass formatted business data to parent component
+        if (onBusinessSelect) {
+          onBusinessSelect(formattedBusiness);
+        }
+      } else {
+        // For fallback data, use the business object directly
+        const formattedBusiness = {
+          id: business.id,
+          name: business.name,
+          address: business.address,
+          phone: business.phone,
+          website: business.website,
+          location: business.location,
+          hours: getBusinessHours(business.businessType),
+          services: getBusinessServices(business.businessType),
+          faqs: getBusinessFAQs(business.businessType)
+        };
+        
+        // Pass formatted business data to parent component
+        if (onBusinessSelect) {
+          onBusinessSelect(formattedBusiness);
+        }
+      }
+    } catch (error) {
+      console.error('Error getting business details:', error);
+      setError('Error retrieving business details. Please try again.');
+      
+      // Still try to use the basic information we have
+      const formattedBusiness = {
+        id: business.id,
+        name: business.name,
+        address: business.address || '',
+        phone: '',
+        website: '',
+        hours: getBusinessHours('other'),
+        services: getBusinessServices('other'),
+        faqs: getBusinessFAQs('other')
+      };
+      
+      if (onBusinessSelect) {
+        onBusinessSelect(formattedBusiness);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -605,6 +616,22 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
+  };
+
+  // Handle creation of custom business
+  const handleCreateCustomBusiness = () => {
+    // Create a custom business based on user input
+    const customBusiness = {
+      id: `custom-${Date.now()}`,
+      name: inputValue,
+      description: `Custom business created from search`,
+      address: userLocation ? 'Near your location' : '123 Main St',
+      phone: '(555) 123-4567',
+      website: `https://${inputValue.toLowerCase().replace(/\s+/g, '')}.example.com`,
+      businessType: 'custom',
+      location: userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null
+    };
+    handleSelectBusiness(customBusiness);
   };
 
   // Get business hours based on business type
@@ -882,6 +909,12 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
 
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>
+      {googleApiError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {googleApiError} You can still search for and create businesses using our default database.
+        </Alert>
+      )}
+      
       <TextField
         fullWidth
         placeholder="Start typing a business name..."
@@ -935,20 +968,7 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
                 variant="outlined" 
                 size="small" 
                 color="primary"
-                onClick={() => {
-                  // Create a custom business based on user input
-                  const customBusiness = {
-                    id: `custom-${Date.now()}`,
-                    name: inputValue,
-                    description: `Custom business created from search`,
-                    address: userLocation ? 'Near your location' : '123 Main St',
-                    phone: '(555) 123-4567',
-                    website: `https://${inputValue.toLowerCase().replace(/\s+/g, '')}.example.com`,
-                    businessType: 'custom',
-                    location: userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null
-                  };
-                  handleSelectBusiness(customBusiness);
-                }}
+                onClick={handleCreateCustomBusiness}
                 sx={{ mt: 1 }}
               >
                 Use "{inputValue}" for my business

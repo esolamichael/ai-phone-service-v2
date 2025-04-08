@@ -85,7 +85,51 @@ const mockBusinessData = [
   }
 ];
 
+// Function to fetch the Google Maps API key from the Netlify function
+const getGoogleApiKey = async () => {
+  try {
+    console.log('Fetching Google API key from Netlify function...');
+    
+    // First try Netlify function endpoint
+    try {
+      const response = await fetch('/.netlify/functions/getGoogleApiKey');
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.apiKey) {
+          console.log('API key successfully received from Netlify function');
+          return data.apiKey;
+        } else {
+          console.warn('API key missing from Netlify function response');
+        }
+      } else {
+        console.error('Failed to fetch API key, status:', response.status);
+        const text = await response.text();
+        console.error('Response:', text);
+      }
+    } catch (netlifyError) {
+      console.error('Error accessing Netlify function:', netlifyError);
+    }
+    
+    // If we got here, Netlify function failed, try direct environment variable (for local development)
+    console.log('Trying to access API key from environment directly (for local development)');
+    if (process.env && process.env.REACT_APP_GOOGLE_MAPS_API_KEY) {
+      console.log('Found API key in REACT_APP_GOOGLE_MAPS_API_KEY environment variable');
+      return process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+    }
+    
+    console.error('No API key available from any source');
+    throw new Error('Failed to get Google Maps API key');
+  } catch (error) {
+    console.error('Error fetching Google API key:', error);
+    throw error;
+  }
+};
+
 const businessApi = {
+  // Get Google API key
+  getGoogleApiKey,
+  
   // Search business on Google Business Profile
   searchGoogleBusiness: async (query) => {
     // Simulate API call with delay
