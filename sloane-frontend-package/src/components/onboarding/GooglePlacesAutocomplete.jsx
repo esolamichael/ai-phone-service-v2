@@ -21,6 +21,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import PhoneIcon from '@mui/icons-material/Phone';
 import businessApi from '../../api/business';
 
+// Constant for Google Maps API key - replace with your API key for direct testing
+// In production, this should be loaded from environment variables or your Netlify function
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
+
 // Sample business data for fallback when Google Places API is unavailable
 const SAMPLE_BUSINESSES = [
   // Los Angeles Businesses
@@ -44,7 +48,6 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
   const [error, setError] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [useGooglePlaces, setUseGooglePlaces] = useState(false);
-  const [googleApiKey, setGoogleApiKey] = useState(null);
   const [googleApiLoaded, setGoogleApiLoaded] = useState(false);
   const [googleApiError, setGoogleApiError] = useState(null);
   const autocompleteService = useRef(null);
@@ -57,115 +60,119 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
 
   // Load Google Maps API
   useEffect(() => {
-    const loadGoogleMapsApi = async () => {
+    // Check if API is already loaded
+    if (window.google && window.google.maps && window.google.maps.places) {
+      console.log('Google Maps API already available in window');
+      initializeGoogleServices();
+      setGoogleApiLoaded(true);
+      setUseGooglePlaces(true);
+      return;
+    }
+
+    // If we already have callbacks array from index.html, use it
+    if (window.googleMapsLoaded) {
+      console.log('Google Maps API already loaded via global script');
+      initializeGoogleServices();
+      setGoogleApiLoaded(true);
+      setUseGooglePlaces(true);
+      return;
+    }
+
+    // Function to load Google Maps API
+    const loadGoogleMapsAPI = async () => {
       try {
-        console.log('Starting Google Maps API loading process...');
+        console.log('Starting to load Google Maps API...');
         
-        // Check if Google Maps is already loaded
-        if (window.google && window.google.maps && window.google.maps.places) {
-          console.log('Google Maps API already loaded in window');
+        // Get API key - use direct key or try to fetch from Netlify
+        let apiKey = GOOGLE_MAPS_API_KEY;
+        
+        // If no direct key available, try the Netlify function
+        if (!apiKey) {
+          try {
+            console.log('No direct API key, fetching from Netlify function...');
+            const response = await fetch('/.netlify/functions/getGoogleApiKey');
+            
+            if (!response.ok) {
+              throw new Error(`Failed to fetch API key: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            apiKey = data.apiKey;
+            
+            if (!apiKey) {
+              throw new Error('No API key received from server');
+            }
+            
+            console.log('Successfully received API key from Netlify function');
+          } catch (error) {
+            console.error('Error fetching API key from Netlify:', error);
+            setGoogleApiError('Failed to get Google Maps API key. Using fallback data.');
+            return;
+          }
+        }
+        
+        // Register our callback to be called when API loads
+        window.googleMapsCallbacks = window.googleMapsCallbacks || [];
+        window.googleMapsCallbacks.push(() => {
+          console.log('API loaded callback triggered');
+          initializeGoogleServices();
           setGoogleApiLoaded(true);
           setUseGooglePlaces(true);
-          initializeGoogleServices();
-          return;
-        }
+        });
         
-        // Get API key from our Netlify function
-        console.log('Requesting API key...');
-        const apiKey = await businessApi.getGoogleApiKey();
-        
-        if (!apiKey) {
-          console.error('No API key returned from server');
-          setGoogleApiError('Failed to load API key. Using fallback data.');
-          setUseGooglePlaces(false);
-          return;
-        }
-        
-        setGoogleApiKey(apiKey);
-        console.log('API key received successfully');
-        
-        // Load Google Maps API script
-        console.log('Creating script element to load Google Maps API...');
+        // Create and load the script
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=googleMapsCallback`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMapsAPI`;
         script.async = true;
         script.defer = true;
         
-        // Define global callback
-        window.googleMapsCallback = () => {
-          console.log('Google Maps API loaded via callback');
-          setGoogleApiLoaded(true);
-          setUseGooglePlaces(true);
-          initializeGoogleServices();
-        };
-        
-        script.onload = () => {
-          console.log('Script onload event fired');
-          // The actual initialization happens in the callback
-        };
-        
-        script.onerror = (error) => {
-          console.error('Failed to load Google Maps API script:', error);
+        // Handle script load errors
+        script.onerror = () => {
+          console.error('Failed to load Google Maps script');
           setGoogleApiError('Failed to load Google Maps API. Using fallback data.');
-          setUseGooglePlaces(false);
         };
         
-        console.log('Appending script to document head...');
+        // Add script to document
         document.head.appendChild(script);
+        console.log('Google Maps script added to head');
         
-        return () => {
-          // Cleanup script if component unmounts during loading
-          if (script.parentNode) {
-            script.parentNode.removeChild(script);
-          }
-          // Clean up global callback
-          delete window.googleMapsCallback;
-        };
       } catch (error) {
-        console.error('Error setting up Google Maps API:', error);
-        setGoogleApiError(`Failed to initialize Google Maps API: ${error.message}. Using fallback data.`);
-        setUseGooglePlaces(false);
+        console.error('Error in loadGoogleMapsAPI:', error);
+        setGoogleApiError(`Error loading Google Maps API: ${error.message}. Using fallback data.`);
       }
     };
     
-    loadGoogleMapsApi();
+    loadGoogleMapsAPI();
   }, []);
-  
+
   // Initialize Google services when API is loaded
   const initializeGoogleServices = () => {
-    console.log('Initializing Google services...');
-    
     if (!window.google || !window.google.maps || !window.google.maps.places) {
-      console.error('Google Maps Places API not available in window object');
-      console.log('window.google exists:', !!window.google);
-      console.log('window.google.maps exists:', !!(window.google && window.google.maps));
-      console.log('window.google.maps.places exists:', !!(window.google && window.google.maps && window.google.maps.places));
-      setGoogleApiError('Google Maps Places API failed to load correctly. Using fallback data.');
-      setUseGooglePlaces(false);
+      console.error('Google Maps API not available for initialization');
       return;
     }
     
     try {
-      // Create a new session token for autocomplete
-      console.log('Creating session token...');
+      console.log('Initializing Google Maps services...');
+      
+      // Create a session token
       sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
       
       // Initialize the autocomplete service
-      console.log('Initializing autocomplete service...');
       autocompleteService.current = new window.google.maps.places.AutocompleteService();
       
-      // Initialize the places service (needs a div as a map container)
-      console.log('Creating map element for Places service...');
+      // Initialize the Places service (needs a map div)
       const mapDiv = document.createElement('div');
-      const map = new window.google.maps.Map(mapDiv, { center: { lat: 0, lng: 0 }, zoom: 1 });
-      
-      console.log('Initializing places service...');
+      const map = new window.google.maps.Map(mapDiv, { 
+        center: { lat: 0, lng: 0 }, 
+        zoom: 1 
+      });
       placesService.current = new window.google.maps.places.PlacesService(map);
       
-      console.log('Google services initialized successfully');
+      console.log('Google Maps services initialized successfully');
     } catch (error) {
       console.error('Error initializing Google services:', error);
-      setGoogleApiError(`Error initializing Google services: ${error.message}. Using fallback data.`);
+      setGoogleApiError(`Failed to initialize Google services: ${error.message}. Using fallback data.`);
       setUseGooglePlaces(false);
     }
   };
@@ -242,55 +249,40 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
 
   // Get Google Places predictions
   const getGooglePlacesPredictions = (query) => {
-    console.log('Requesting place predictions for query:', query);
-    
-    if (!autocompleteService.current) {
-      console.error('Autocomplete service not initialized');
+    if (!autocompleteService.current || !query || query.length < 2) {
       return Promise.resolve([]);
     }
     
-    if (!query || query.length < 2) {
-      console.log('Query too short, skipping prediction request');
-      return Promise.resolve([]);
-    }
-    
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
+        // Prepare the request
         const request = {
           input: query,
           types: ['establishment']
         };
         
-        // Add sessionToken if available
+        // Add session token if available
         if (sessionToken.current) {
           request.sessionToken = sessionToken.current;
-        } else {
-          console.warn('No session token available');
         }
         
         // Add location bias if user location is available
         if (userLocation) {
-          console.log('Adding location bias with user location:', userLocation);
           request.locationBias = {
             center: userLocation,
             radius: 50000 // 50km radius
           };
         }
         
-        console.log('Sending getPlacePredictions request with params:', JSON.stringify(request));
-        
+        // Get predictions
         autocompleteService.current.getPlacePredictions(
           request,
           (predictions, status) => {
-            console.log('Got prediction response, status:', status);
-            
             if (status !== window.google.maps.places.PlacesServiceStatus.OK || !predictions) {
-              console.warn('Google Places Autocomplete returned non-OK status:', status);
+              console.warn('Places Autocomplete returned status:', status);
               resolve([]);
               return;
             }
-            
-            console.log(`Got ${predictions.length} predictions`);
             resolve(predictions);
           }
         );
@@ -303,42 +295,22 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
   
   // Get details for a selected place
   const getPlaceDetails = (placeId) => {
-    console.log('Requesting place details for placeId:', placeId);
-    
     if (!placesService.current) {
-      console.error('Places service not initialized');
       return Promise.reject(new Error('Places service not initialized'));
     }
     
     return new Promise((resolve, reject) => {
       try {
-        const request = {
-          placeId: placeId,
-          fields: ['name', 'formatted_address', 'formatted_phone_number', 'website', 'geometry', 'types']
-        };
-        
-        console.log('Sending getDetails request with fields:', request.fields.join(', '));
-        
         placesService.current.getDetails(
-          request,
+          {
+            placeId: placeId,
+            fields: ['name', 'formatted_address', 'formatted_phone_number', 'website', 'geometry', 'types']
+          },
           (place, status) => {
-            console.log('Got place details response, status:', status);
-            
             if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place) {
-              console.error(`Error fetching place details: ${status}`);
               reject(new Error(`Error fetching place details: ${status}`));
               return;
             }
-            
-            console.log('Place details received:', JSON.stringify({
-              name: place.name,
-              address: place.formatted_address,
-              phone: place.formatted_phone_number,
-              website: place.website,
-              hasGeometry: !!place.geometry,
-              types: place.types
-            }));
-            
             resolve(place);
           }
         );

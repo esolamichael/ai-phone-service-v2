@@ -19,6 +19,29 @@
     <link rel="preconnect" href="https://maps.googleapis.com" />
     <link rel="preconnect" href="https://maps.gstatic.com" />
     <title>Sloane | AI Phone Answering Service</title>
+    
+    <!-- Direct Google Maps API loading -->
+    <script>
+      window.initGoogleMapsAPI = function() {
+        console.log('Google Maps API callback function called');
+        window.googleMapsLoaded = true;
+        // This will trigger any pending callbacks
+        if (window.googleMapsCallbacks && window.googleMapsCallbacks.length) {
+          window.googleMapsCallbacks.forEach(function(callback) {
+            callback();
+          });
+        }
+      };
+      
+      // Initialize the callbacks array
+      window.googleMapsCallbacks = [];
+      
+      // Set a flag to track if Google Maps API is loaded
+      window.googleMapsLoaded = false;
+    </script>
+    
+    <!-- You can uncomment and edit this line to directly load the Google Maps API with your key for testing -->
+    <!-- <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY_HERE&libraries=places&callback=initGoogleMapsAPI"></script> -->
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
