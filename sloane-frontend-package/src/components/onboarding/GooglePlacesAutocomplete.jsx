@@ -110,9 +110,15 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
     // If we already have callbacks array from index.html, use it
     if (window.googleMapsLoaded) {
       console.log('✅ Google Maps API already loaded via global script');
-      initializeGoogleServices();
-      setGoogleApiLoaded(true);
-      setUseGooglePlaces(true);
+      try {
+        initializeGoogleServices();
+        setGoogleApiLoaded(true);
+        setUseGooglePlaces(true);
+      } catch (error) {
+        console.error('❌ Error initializing Google services from global script:', error);
+        setGoogleApiError('Google Maps API initialization failed. Using fallback data.');
+        setUseGooglePlaces(false);
+      }
       return;
     }
 
@@ -177,6 +183,24 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
             defer: script.defer
           });
           setGoogleApiError('Failed to load Google Maps API. Using fallback data.');
+        };
+        
+        // Set a timeout to catch cases where the script loads but API key is unauthorized
+        const apiTimeout = setTimeout(() => {
+          if (!window.google || !window.google.maps || !window.google.maps.places) {
+            console.error('❌ Google Maps API failed to initialize within timeout period');
+            console.error('This could be due to an unauthorized API key or API restrictions');
+            setGoogleApiError('Google Maps API failed to initialize. Using fallback data.');
+            setUseGooglePlaces(false);
+          }
+        }, 10000); // 10 second timeout
+        
+        // Also add a global error handler to catch API key errors
+        window.gm_authFailure = function() {
+          console.error('❌ Google Maps authentication error - API key is likely invalid or restricted');
+          clearTimeout(apiTimeout);
+          setGoogleApiError('Google Maps API key is not authorized. Using fallback data.');
+          setUseGooglePlaces(false);
         };
         
         // Add script to document
@@ -333,7 +357,9 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
     
     if (!autocompleteService.current) {
       console.error('❌ Autocomplete service not initialized');
-      return Promise.resolve([]);
+      // Fall back to local data
+      setUseGooglePlaces(false);
+      return Promise.resolve(filterBusinesses(query));
     }
     
     if (!query || query.length < 2) {
@@ -381,10 +407,28 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
           hasLocationBias: !!request.locationBias
         });
         
+        // Create a timeout for the API call
+        const timeout = setTimeout(() => {
+          console.warn('⚠️ Places API request timed out after 5 seconds');
+          setUseGooglePlaces(false);
+          setGoogleApiError('Google Maps API request timed out. Using fallback data.');
+          resolve(filterBusinesses(query));
+        }, 5000);
+        
         // Get predictions
         autocompleteService.current.getPlacePredictions(
           request,
           (predictions, status) => {
+            clearTimeout(timeout);
+            
+            if (status === "REQUEST_DENIED") {
+              console.error('❌ Places API request denied - API key is likely restricted');
+              setUseGooglePlaces(false);
+              setGoogleApiError('Google Maps Places API is not enabled or key is restricted. Using fallback data.');
+              resolve(filterBusinesses(query));
+              return;
+            }
+            
             if (status !== window.google.maps.places.PlacesServiceStatus.OK || !predictions) {
               console.warn('⚠️ Places Autocomplete returned status:', status);
               console.warn('Details:', {
@@ -393,7 +437,14 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
                 receivedPredictions: !!predictions,
                 predictionsCount: predictions ? predictions.length : 0
               });
-              resolve([]);
+              
+              // For any unsuccessful response, try to fall back to our local data
+              if (status === "ZERO_RESULTS") {
+                console.log('ℹ️ No results from Places API, trying local data');
+                resolve(filterBusinesses(query));
+              } else {
+                resolve([]);
+              }
               return;
             }
             
@@ -417,7 +468,10 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
           message: error.message,
           stack: error.stack
         });
-        resolve([]);
+        
+        // For any error, fall back to local data
+        setUseGooglePlaces(false);
+        resolve(filterBusinesses(query));
       }
     });
   };
@@ -428,6 +482,7 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
     
     if (!placesService.current) {
       console.error('❌ Places service not initialized');
+      setUseGooglePlaces(false);
       return Promise.reject(new Error('Places service not initialized'));
     }
     
@@ -436,14 +491,39 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
         const fields = ['name', 'formatted_address', 'formatted_phone_number', 'website', 'geometry', 'types'];
         console.log('📡 Requesting place details with fields:', fields);
         
+        // Set a timeout for the details request
+        const timeout = setTimeout(() => {
+          console.warn('⚠️ Places Details API request timed out after 5 seconds');
+          setUseGooglePlaces(false);
+          setGoogleApiError('Google Maps Places Details API request timed out. Using fallback data.');
+          reject(new Error('API request timeout'));
+        }, 5000);
+        
         placesService.current.getDetails(
           {
             placeId: placeId,
             fields: fields
           },
           (place, status) => {
+            clearTimeout(timeout);
+            
+            if (status === "REQUEST_DENIED") {
+              console.error('❌ Places Details API request denied - API key is likely restricted');
+              setUseGooglePlaces(false);
+              setGoogleApiError('Google Maps Places Details API is not enabled or key is restricted. Using fallback data.');
+              reject(new Error('API request denied'));
+              return;
+            }
+            
             if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place) {
               console.error('❌ Error fetching place details. Status:', status);
+              
+              // If we get an invalid response, switch to fallback mode entirely
+              if (status === "INVALID_REQUEST" || status === "NOT_FOUND") {
+                setUseGooglePlaces(false);
+                setGoogleApiError('Google Maps Places API error. Using fallback data.');
+              }
+              
               reject(new Error(`Error fetching place details: ${status}`));
               return;
             }
@@ -466,6 +546,9 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
           message: error.message,
           stack: error.stack
         });
+        
+        // On any error, switch to fallback mode
+        setUseGooglePlaces(false);
         reject(error);
       }
     });
