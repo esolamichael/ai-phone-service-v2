@@ -39,7 +39,7 @@ const CallToActionSection = () => {
           
           <Button
             component={RouterLink}
-            to="/signup"
+            to="/onboarding"
             variant="contained"
             color="secondary"
             size="large"
