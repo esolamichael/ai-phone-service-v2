@@ -7,6 +7,7 @@
   NODE_VERSION = "16"
   NPM_CONFIG_LEGACY_PEER_DEPS = "true"
   CI = "false"
+  GOOGLE_PLACES_API_KEY = "AIzaSyBai5EagIUmMY8Vaugzkc4obqydImC-fjA"
 
 [[redirects]]
   from = "/*"

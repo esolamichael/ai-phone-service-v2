@@ -21,10 +21,40 @@ import SearchIcon from '@mui/icons-material/Search';
 import PhoneIcon from '@mui/icons-material/Phone';
 import businessApi from '../../api/business';
 
-// Constant for Google Maps API key - replace with your API key for direct testing
-// In production, this should be loaded from environment variables or your Netlify function
-// For now, we're using a direct API key to ensure functionality
-const GOOGLE_MAPS_API_KEY = 'YOUR_ACTUAL_API_KEY'; // Replace this with your actual Google Maps API key
+// Google Maps API key - loaded from environment variables or Netlify function
+// This will be populated during component initialization
+let GOOGLE_MAPS_API_KEY = '';
+
+// Function to fetch API key from Netlify function
+const fetchApiKey = async () => {
+  try {
+    console.log('📡 Fetching Google Maps API key from Netlify function');
+    const response = await fetch('/.netlify/functions/getGoogleApiKey');
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch API key: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    if (data.apiKey) {
+      console.log('✅ Successfully retrieved API key from Netlify function');
+      return data.apiKey;
+    } else if (data.error) {
+      throw new Error(`API key error: ${data.error}`);
+    } else {
+      throw new Error('Invalid response from API key function');
+    }
+  } catch (error) {
+    console.error('❌ Error fetching API key:', error);
+    // Check for environment variable as fallback
+    if (process.env.REACT_APP_GOOGLE_MAPS_API_KEY && 
+        process.env.REACT_APP_GOOGLE_MAPS_API_KEY !== 'your_google_maps_api_key_here') {
+      console.log('✅ Using API key from environment variable');
+      return process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+    }
+    return null;
+  }
+};
 
 // Sample business data for fallback when Google Places API is unavailable
 const SAMPLE_BUSINESSES = [
@@ -65,7 +95,7 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
     console.log('Environment check:', {
       NODE_ENV: process.env.NODE_ENV,
       API_KEY_ENV_VAR_EXISTS: !!process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-      API_KEY_VALUE: GOOGLE_MAPS_API_KEY ? 'API key exists (masked)' : 'API key not found in env vars'
+      API_KEY_VALUE: GOOGLE_MAPS_API_KEY ? 'API key exists (masked)' : 'API key not found yet'
     });
     
     // Check if API is already loaded
@@ -93,16 +123,19 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
       try {
         console.log('📡 Starting to load Google Maps API...');
         
-        // Get API key directly from constant - we're using a hardcoded key for now
-        let apiKey = GOOGLE_MAPS_API_KEY;
+        // First try to get API key from Netlify function
+        const apiKey = await fetchApiKey();
         
-        if (!apiKey || apiKey === 'YOUR_ACTUAL_API_KEY') {
-          console.error('❌ API key not properly replaced. Please update the GOOGLE_MAPS_API_KEY constant with your actual API key.');
+        if (!apiKey) {
+          console.error('❌ Could not retrieve a valid API key from any source.');
           setGoogleApiError('Google Maps API key not configured. Using fallback data.');
           return;
         }
         
-        console.log('✅ Using direct API key:', apiKey.substring(0, 4) + '...' + apiKey.substring(apiKey.length - 4));
+        // Store the API key for later use
+        GOOGLE_MAPS_API_KEY = apiKey;
+        
+        console.log('✅ Using API key:', apiKey.substring(0, 4) + '...' + apiKey.substring(apiKey.length - 4));
         
         // Register our callback to be called when API loads
         window.googleMapsCallbacks = window.googleMapsCallbacks || [];
@@ -113,13 +146,15 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
           setUseGooglePlaces(true);
         });
         
-        // Add global callback function
-        window.initGoogleMapsAPI = function() {
-          console.log('🌐 Google Maps API global callback executed');
-          if (window.googleMapsCallbacks && Array.isArray(window.googleMapsCallbacks)) {
-            window.googleMapsCallbacks.forEach(callback => callback());
-          }
-        };
+        // Add global callback function if not already defined
+        if (typeof window.initGoogleMapsAPI !== 'function') {
+          window.initGoogleMapsAPI = function() {
+            console.log('🌐 Google Maps API global callback executed');
+            if (window.googleMapsCallbacks && Array.isArray(window.googleMapsCallbacks)) {
+              window.googleMapsCallbacks.forEach(callback => callback());
+            }
+          };
+        }
         
         // Create and load the script
         const script = document.createElement('script');
