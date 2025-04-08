@@ -21,9 +21,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import PhoneIcon from '@mui/icons-material/Phone';
 import businessApi from '../../api/business';
 
-// Google Maps API key - Direct integration for immediate testing
-// For security in production, consider using environment variables or secure API
-const GOOGLE_MAPS_API_KEY = 'AIzaSyDK9d8PGfUgt0tC7SxH78ySt1G9uEBiA-k'; // New test API key
+// Google Maps API key is now loaded directly from index.html 
+// No need to define it here as we're not loading the API from the component
 
 // Sample business data for fallback when Google Places API is unavailable
 const SAMPLE_BUSINESSES = [
@@ -58,78 +57,34 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
 
-  // Load Google Maps API - simplified for direct key use
+  // Just initialize Google Services - API is loaded from index.html
   useEffect(() => {
-    console.log('🔍 Loading Google Maps API with direct key');
+    // Register a callback for when API loads (in case it hasn't loaded yet)
+    window.googleMapsCallbacks = window.googleMapsCallbacks || [];
+    window.googleMapsCallbacks.push(() => {
+      console.log('✅ API loaded callback triggered');
+      initializeGoogleServices();
+      setGoogleApiLoaded(true);
+      setUseGooglePlaces(true);
+    });
     
-    // Check if API is already loaded
+    // If API is already loaded, initialize immediately
     if (window.google && window.google.maps && window.google.maps.places) {
       console.log('✅ Google Maps API already available in window');
       initializeGoogleServices();
       setGoogleApiLoaded(true);
       setUseGooglePlaces(true);
-      return;
-    }
-
-    // If we already have callbacks array from index.html, use it
-    if (window.googleMapsLoaded) {
+    } 
+    // If googleMapsLoaded flag is true, also initialize
+    else if (window.googleMapsLoaded) {
       console.log('✅ Google Maps API already loaded via global script');
       initializeGoogleServices();
       setGoogleApiLoaded(true);
       setUseGooglePlaces(true);
-      return;
     }
-
-    console.log('🔄 Loading Google Maps API...');
-
-    // Function to load Google Maps API
-    const loadGoogleMapsAPI = () => {
-      try {
-        // Register our callback to be called when API loads
-        window.googleMapsCallbacks = window.googleMapsCallbacks || [];
-        window.googleMapsCallbacks.push(() => {
-          console.log('✅ API loaded callback triggered');
-          initializeGoogleServices();
-          setGoogleApiLoaded(true);
-          setUseGooglePlaces(true);
-        });
-        
-        // Add global callback function if not already defined
-        if (typeof window.initGoogleMapsAPI !== 'function') {
-          window.initGoogleMapsAPI = function() {
-            console.log('🌐 Google Maps API global callback executed');
-            if (window.googleMapsCallbacks && Array.isArray(window.googleMapsCallbacks)) {
-              window.googleMapsCallbacks.forEach(callback => callback());
-            }
-          };
-        }
-        
-        // Create and load the script
-        const script = document.createElement('script');
-        
-        console.log(`📜 Loading Google Maps API with key: ${GOOGLE_MAPS_API_KEY.substring(0, 4)}...`);
-        
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMapsAPI`;
-        script.async = true;
-        script.defer = true;
-        
-        // Handle script load errors
-        script.onerror = (e) => {
-          console.error('❌ Failed to load Google Maps script', e);
-          setGoogleApiError('Failed to load Google Maps API.');
-        };
-        
-        // Add script to document
-        document.head.appendChild(script);
-        console.log('📑 Google Maps script added to document');
-        
-      } catch (error) {
-        console.error('❌ Error in loadGoogleMapsAPI:', error);
-        setGoogleApiError(`Error loading Google Maps API: ${error.message}`);
-      }
-    };
-    
-    loadGoogleMapsAPI();
+    else {
+      console.log('⏳ Waiting for Google Maps API to load from index.html script...');
+    }
   }, []);
 
   // Initialize Google services when API is loaded
