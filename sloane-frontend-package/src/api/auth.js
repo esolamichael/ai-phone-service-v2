@@ -4,6 +4,33 @@ import api from './index';
 const authApi = {
   // Login user
   login: async (email, password) => {
+    // Check if we should use mock response (if real API is down)
+    const useMockResponse = true; // Set to false when real API is working
+    
+    if (useMockResponse) {
+      console.log('Using mock login response');
+      // Return a mock successful response
+      return new Promise((resolve) => {
+        // Simulate network delay
+        setTimeout(() => {
+          const mockResponse = {
+            user: {
+              id: 'mock-user-id',
+              firstName: 'User',
+              lastName: 'Name',
+              email: email,
+              businessName: 'Business Name'
+            },
+            token: 'mock-jwt-token-' + Math.random().toString(36).substring(2),
+            refreshToken: 'mock-refresh-token-' + Math.random().toString(36).substring(2)
+          };
+          console.log('Mock login response:', mockResponse);
+          resolve(mockResponse);
+        }, 800); // simulate network delay
+      });
+    }
+    
+    // Original implementation for when the API is working
     try {
       const response = await api.post('/auth/login', { email, password });
       return response.data;

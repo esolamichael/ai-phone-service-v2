@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -16,7 +16,17 @@ import {
   CardActionArea,
   Divider,
   Alert,
-  Snackbar
+  Snackbar,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Avatar,
+  InputAdornment,
+  IconButton,
+  Dialog,
+  DialogContent,
+  DialogTitle
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import LanguageIcon from '@mui/icons-material/Language';
@@ -24,9 +34,17 @@ import AddBusinessIcon from '@mui/icons-material/AddBusiness';
 import EventIcon from '@mui/icons-material/Event';
 import PhoneIcon from '@mui/icons-material/Phone';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import SearchIcon from '@mui/icons-material/Search';
+import BusinessIcon from '@mui/icons-material/Business';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
+import businessApi from '../../api/business';
+import BusinessDataExtraction from './BusinessDataExtraction';
+import GooglePlacesAutocomplete from './GooglePlacesAutocomplete';
 
-// Mock API function for demonstration
+// Mock API function for non-business API calls
 const mockApiCall = (data) => {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -44,12 +62,25 @@ const EnhancedOnboardingPage = () => {
     phoneNumber: '',
     forwardCalls: false,
     callHandlingPreference: 'answer_all',
-    calendarIntegration: ''
+    calendarIntegration: '',
+    businessId: '',
+    address: '',
+    website: '',
+    hours: {},
+    services: [],
+    faqs: []
   });
   const [loading, setLoading] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
+  const [selectedBusinessData, setSelectedBusinessData] = useState(null);
+  const [isExtractionDialogOpen, setIsExtractionDialogOpen] = useState(false);
+  const [extractionComplete, setExtractionComplete] = useState(false);
   const navigate = useNavigate();
 
   const steps = [
@@ -65,6 +96,73 @@ const EnhancedOnboardingPage = () => {
       ...formData,
       dataSource: source
     });
+    
+    // Clear search results when switching data source
+    setSearchResults([]);
+    setSearchQuery('');
+    setSelectedBusiness(null);
+  };
+  
+  // Handle Google Business search
+  const handleGoogleBusinessSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSnackbarMessage('Please enter a business name to search');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      const { results } = await businessApi.searchGoogleBusiness(searchQuery);
+      setSearchResults(results);
+      
+      if (results.length === 0) {
+        setSnackbarMessage('No businesses found with that name');
+        setSnackbarOpen(true);
+      }
+    } catch (error) {
+      console.error('Error searching for business:', error);
+      setSnackbarMessage('Failed to search for business. Please try again.');
+      setSnackbarOpen(true);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  // Handle business selection from Google Places Autocomplete
+  const handleBusinessSelect = async (businessData) => {
+    // Save the selected business ID
+    setSelectedBusiness(businessData.id);
+    
+    // Set the business data from the Google Places API
+    setSelectedBusinessData(businessData);
+    
+    // Open the data extraction dialog to show the process
+    setIsExtractionDialogOpen(true);
+  };
+  
+  // Handle business data extraction completion
+  const handleExtractionComplete = (businessData) => {
+    // Update form data with the extracted business details
+    setFormData(prev => ({
+      ...prev,
+      businessId: businessData.id || selectedBusiness,
+      businessName: businessData.name,
+      phoneNumber: businessData.phone,
+      address: businessData.address,
+      website: businessData.website,
+      hours: businessData.hours,
+      services: businessData.services,
+      faqs: businessData.faqs
+    }));
+    
+    setExtractionComplete(true);
+    
+    // Close dialog and advance to next step after a short delay
+    setTimeout(() => {
+      setIsExtractionDialogOpen(false);
+      setActiveStep(1);
+    }, 1500);
   };
 
   const handleUrlSubmit = async () => {
@@ -74,70 +172,37 @@ const EnhancedOnboardingPage = () => {
       return;
     }
 
-    setLoading(true);
-    setProcessingStatus('Connecting to your business data...');
-
-    try {
-      // Simulate API call to fetch business data
-      await mockApiCall({ url: formData.businessUrl });
-      setProcessingStatus('Analyzing your business information...');
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setProcessingStatus('Extracting services and FAQ data...');
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setProcessingStatus('Training Sloane AI with your business data...');
-      
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // In a real implementation, we would use the fetched data
-      // For demo, we'll set mock data
-      setFormData(prev => ({
-        ...prev,
-        businessName: formData.dataSource === 'google' ? 'ABC Dental Care' : 'Your Business Name',
-        businessHours: {
-          monday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
-          tuesday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
-          wednesday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
-          thursday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
-          friday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
-          saturday: { isOpen: false, openTime: '', closeTime: '' },
-          sunday: { isOpen: false, openTime: '', closeTime: '' }
-        },
-        services: [
-          { name: 'Regular Checkup', description: 'Comprehensive dental examination', price: '$75' },
-          { name: 'Teeth Cleaning', description: 'Professional dental cleaning', price: '$120' }
-        ],
-        faqs: [
-          { 
-            question: 'Do you accept insurance?', 
-            answer: 'Yes, we accept most major insurance plans. Please call our office to verify your specific coverage.' 
-          },
-          { 
-            question: 'How often should I have a dental checkup?', 
-            answer: 'We recommend visiting for a checkup and cleaning every 6 months.' 
-          }
-        ]
-      }));
-      
-      setActiveStep(1);
-    } catch (error) {
-      console.error('Error fetching business data:', error);
-      setSnackbarMessage('Failed to fetch business data. Please try again.');
-      setSnackbarOpen(true);
-    } finally {
-      setLoading(false);
-      setProcessingStatus('');
-    }
+    // Open extraction dialog to show the process
+    setIsExtractionDialogOpen(true);
   };
 
   const handleNext = async () => {
     if (activeStep === 0 && formData.dataSource) {
-      if (formData.businessUrl) {
-        await handleUrlSubmit();
-      } else {
-        setSnackbarMessage('Please enter your business URL');
-        setSnackbarOpen(true);
+      if (formData.dataSource === 'google') {
+        if (selectedBusiness) {
+          // Open extraction dialog if not already processed
+          if (!extractionComplete) {
+            // Reopen the dialog to process the selected business
+            setIsExtractionDialogOpen(true);
+          } else {
+            // Already processed through extraction dialog
+            setActiveStep(1);
+          }
+        } else if (searchResults.length === 0) {
+          setSnackbarMessage('Please search for and select your business');
+          setSnackbarOpen(true);
+        } else {
+          setSnackbarMessage('Please select your business from the search results');
+          setSnackbarOpen(true);
+        }
+      } else if (formData.dataSource === 'website') {
+        // For website URL source
+        if (formData.businessUrl) {
+          await handleUrlSubmit();
+        } else {
+          setSnackbarMessage('Please enter your business URL');
+          setSnackbarOpen(true);
+        }
       }
       return;
     }
@@ -259,20 +324,88 @@ const EnhancedOnboardingPage = () => {
             
             {formData.dataSource && (
               <Box sx={{ mt: 4 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Enter your {formData.dataSource === 'google' ? 'Google Business Profile URL' : 'website URL'}:
-                </Typography>
-                <TextField
-                  fullWidth
-                  name="businessUrl"
-                  value={formData.businessUrl}
-                  onChange={handleInputChange}
-                  placeholder={formData.dataSource === 'google' 
-                    ? "e.g., https://business.google.com/your-business" 
-                    : "e.g., https://yourbusiness.com"}
-                  variant="outlined"
-                  sx={{ mb: 2 }}
-                />
+                {formData.dataSource === 'google' ? (
+                  // Google Business Profile search
+                  <Box>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Search for your business on Google:
+                    </Typography>
+                    
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Start typing your business name to see automatic suggestions. For best results, enable location services in your browser.
+                    </Alert>
+                    
+                    {/* Google Places Autocomplete Component */}
+                    <GooglePlacesAutocomplete 
+                      onBusinessSelect={handleBusinessSelect}
+                    />
+                    
+                    {selectedBusinessData && (
+                      <Paper variant="outlined" sx={{ mt: 3, p: 2 }}>
+                        <Typography variant="subtitle1" fontWeight="medium">
+                          Selected Business:
+                        </Typography>
+                        
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="h6" color="primary">
+                            {selectedBusinessData.name}
+                          </Typography>
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', mt: 1 }}>
+                            <LocationOnIcon color="action" sx={{ mr: 1, mt: 0.3 }} />
+                            <Typography variant="body2">
+                              {selectedBusinessData.address}
+                            </Typography>
+                          </Box>
+                          
+                          {selectedBusinessData.phone && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                              <PhoneIcon color="action" sx={{ mr: 1 }} />
+                              <Typography variant="body2">
+                                {selectedBusinessData.phone}
+                              </Typography>
+                            </Box>
+                          )}
+                          
+                          {selectedBusinessData.website && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                              <LanguageIcon color="action" sx={{ mr: 1 }} />
+                              <Typography variant="body2">
+                                {selectedBusinessData.website}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                        
+                        <Button 
+                          variant="contained" 
+                          color="primary" 
+                          size="small" 
+                          onClick={() => setIsExtractionDialogOpen(true)}
+                          sx={{ mt: 2 }}
+                        >
+                          Use This Business
+                        </Button>
+                      </Paper>
+                    )}
+                  </Box>
+                ) : (
+                  // Website URL input for non-Google source
+                  <Box>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Enter your website URL:
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      name="businessUrl"
+                      value={formData.businessUrl}
+                      onChange={handleInputChange}
+                      placeholder="e.g., https://yourbusiness.com"
+                      variant="outlined"
+                      sx={{ mb: 2 }}
+                    />
+                  </Box>
+                )}
                 
                 {loading && (
                   <Box sx={{ mt: 3 }}>
@@ -649,7 +782,11 @@ const EnhancedOnboardingPage = () => {
               onClick={handleNext}
               disabled={
                 loading || 
-                (activeStep === 0 && (!formData.dataSource || !formData.businessUrl)) ||
+                (activeStep === 0 && (
+                  !formData.dataSource || 
+                  (formData.dataSource === 'google' && !selectedBusiness) ||
+                  (formData.dataSource === 'website' && !formData.businessUrl)
+                )) ||
                 (activeStep === 2 && !formData.phoneNumber) ||
                 (activeStep === 3 && !formData.calendarIntegration)
               }
@@ -666,6 +803,44 @@ const EnhancedOnboardingPage = () => {
           </Box>
         </Paper>
       </Box>
+      
+      {/* Business Data Extraction Dialog */}
+      <Dialog
+        open={isExtractionDialogOpen}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown
+        aria-labelledby="extraction-dialog-title"
+      >
+        <DialogTitle id="extraction-dialog-title">
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">Processing Your Business Data</Typography>
+            {extractionComplete && (
+              <IconButton 
+                edge="end" 
+                color="inherit" 
+                onClick={() => setIsExtractionDialogOpen(false)}
+                aria-label="close"
+              >
+                <CloseIcon />
+              </IconButton>
+            )}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <BusinessDataExtraction
+            source={formData.dataSource}
+            url={formData.businessUrl}
+            businessData={selectedBusinessData}
+            onComplete={handleExtractionComplete}
+            onError={() => {
+              setSnackbarMessage('There was an error processing your business data. Please try again.');
+              setSnackbarOpen(true);
+              setIsExtractionDialogOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
       
       <Snackbar
         open={snackbarOpen}

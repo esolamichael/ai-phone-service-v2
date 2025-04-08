@@ -21,8 +21,10 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 
-// Mock data extraction API
-const mockDataExtraction = async (url, source) => {
+import businessApi from '../../api/business';
+
+// Data extraction API that uses our mock business data
+const mockDataExtraction = async (url, source, businessData = null) => {
   // Simulate different data extraction durations
   const steps = [
     { id: 'connect', time: 1000, success: true },
@@ -43,11 +45,65 @@ const mockDataExtraction = async (url, source) => {
     };
   }
 
-  // Simulate extracted business data
-  return {
-    steps: results,
-    business: {
-      name: source === 'google' ? 'ABC Dental Care' : 'Your Business Name',
+  // If businessData is provided (from Google Business), use that
+  if (businessData) {
+    return {
+      steps: results,
+      business: businessData
+    };
+  }
+  
+  // Otherwise use default data based on source
+  let business;
+  
+  if (source === 'google') {
+    // Simulate fetching a Google business by hardcoding a business ID
+    try {
+      const result = await businessApi.getGoogleBusinessDetails('business-1');
+      business = result.business;
+    } catch (error) {
+      console.error('Failed to fetch Google business:', error);
+      // Fallback to default business data
+      business = {
+        name: 'ABC Dental Care',
+        address: '123 Main Street, Anytown, USA',
+        phone: '(555) 123-4567',
+        website: url || 'https://abcdentalcare.com',
+        hours: {
+          monday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
+          tuesday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
+          wednesday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
+          thursday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
+          friday: { isOpen: true, openTime: '9:00 AM', closeTime: '5:00 PM' },
+          saturday: { isOpen: false, openTime: '', closeTime: '' },
+          sunday: { isOpen: false, openTime: '', closeTime: '' }
+        },
+        services: [
+          { name: 'Regular Checkup', description: 'Comprehensive dental examination', price: '$75' },
+          { name: 'Teeth Cleaning', description: 'Professional dental cleaning', price: '$120' },
+          { name: 'Tooth Filling', description: 'Dental filling procedure', price: '$150-$300' },
+          { name: 'Root Canal', description: 'Root canal treatment', price: '$700-$1,500' }
+        ],
+        faqs: [
+          { 
+            question: 'Do you accept insurance?', 
+            answer: 'Yes, we accept most major insurance plans. Please call our office to verify your specific coverage.' 
+          },
+          { 
+            question: 'How often should I have a dental checkup?', 
+            answer: 'We recommend visiting for a checkup and cleaning every 6 months.' 
+          },
+          { 
+            question: 'Do you offer emergency dental services?', 
+            answer: 'Yes, we provide emergency dental care. Please call our office immediately if you have a dental emergency.' 
+          }
+        ]
+      };
+    }
+  } else {
+    // Website-based extraction
+    business = {
+      name: 'Your Business Name',
       address: '123 Main Street, Anytown, USA',
       phone: '(555) 123-4567',
       website: url,
@@ -61,30 +117,29 @@ const mockDataExtraction = async (url, source) => {
         sunday: { isOpen: false, openTime: '', closeTime: '' }
       },
       services: [
-        { name: 'Regular Checkup', description: 'Comprehensive dental examination', price: '$75' },
-        { name: 'Teeth Cleaning', description: 'Professional dental cleaning', price: '$120' },
-        { name: 'Tooth Filling', description: 'Dental filling procedure', price: '$150-$300' },
-        { name: 'Root Canal', description: 'Root canal treatment', price: '$700-$1,500' }
+        { name: 'Service 1', description: 'Description of service 1', price: '$XX' },
+        { name: 'Service 2', description: 'Description of service 2', price: '$XX' }
       ],
       faqs: [
         { 
-          question: 'Do you accept insurance?', 
-          answer: 'Yes, we accept most major insurance plans. Please call our office to verify your specific coverage.' 
+          question: 'Frequently asked question 1?', 
+          answer: 'Answer to question 1.' 
         },
         { 
-          question: 'How often should I have a dental checkup?', 
-          answer: 'We recommend visiting for a checkup and cleaning every 6 months.' 
-        },
-        { 
-          question: 'Do you offer emergency dental services?', 
-          answer: 'Yes, we provide emergency dental care. Please call our office immediately if you have a dental emergency.' 
+          question: 'Frequently asked question 2?', 
+          answer: 'Answer to question 2.' 
         }
       ]
-    }
+    };
+  }
+
+  return {
+    steps: results,
+    business: business
   };
 };
 
-const BusinessDataExtraction = ({ url, source, onComplete, onError }) => {
+const BusinessDataExtraction = ({ url, source, businessData, onComplete, onError }) => {
   const [currentStep, setCurrentStep] = useState('connect');
   const [completedSteps, setCompletedSteps] = useState({});
   const [error, setError] = useState(null);
@@ -132,7 +187,8 @@ const BusinessDataExtraction = ({ url, source, onComplete, onError }) => {
   useEffect(() => {
     const fetchBusinessData = async () => {
       try {
-        const result = await mockDataExtraction(url, source);
+        // Pass the selected business data to the mockDataExtraction if available
+        const result = await mockDataExtraction(url, source, businessData);
         
         // Process each step with a delay to show progress
         for (const step of steps) {
@@ -163,12 +219,12 @@ const BusinessDataExtraction = ({ url, source, onComplete, onError }) => {
       } catch (err) {
         console.error('Error extracting business data:', err);
         setError('Failed to extract business data. Please try again or enter your information manually.');
-        onError(err);
+        if (onError) onError(err);
       }
     };
 
     fetchBusinessData();
-  }, [url, source]);
+  }, [url, source, businessData, onComplete]);
 
   return (
     <Paper elevation={0} sx={{ p: 3 }}>
