@@ -60,9 +60,16 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
 
   // Load Google Maps API
   useEffect(() => {
+    console.log('🔍 DEBUGGING GOOGLE MAPS API LOADING:');
+    console.log('Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      API_KEY_ENV_VAR_EXISTS: !!process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+      API_KEY_VALUE: GOOGLE_MAPS_API_KEY ? 'API key exists (masked)' : 'API key not found in env vars'
+    });
+    
     // Check if API is already loaded
     if (window.google && window.google.maps && window.google.maps.places) {
-      console.log('Google Maps API already available in window');
+      console.log('✅ Google Maps API already available in window');
       initializeGoogleServices();
       setGoogleApiLoaded(true);
       setUseGooglePlaces(true);
@@ -71,41 +78,54 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
 
     // If we already have callbacks array from index.html, use it
     if (window.googleMapsLoaded) {
-      console.log('Google Maps API already loaded via global script');
+      console.log('✅ Google Maps API already loaded via global script');
       initializeGoogleServices();
       setGoogleApiLoaded(true);
       setUseGooglePlaces(true);
       return;
     }
 
+    console.log('⚠️ Google Maps API not loaded yet, attempting to load...');
+
     // Function to load Google Maps API
     const loadGoogleMapsAPI = async () => {
       try {
-        console.log('Starting to load Google Maps API...');
+        console.log('📡 Starting to load Google Maps API...');
         
         // Get API key - use direct key or try to fetch from Netlify
         let apiKey = GOOGLE_MAPS_API_KEY;
+        console.log('Direct API key available:', !!apiKey);
         
         // If no direct key available, try the Netlify function
         if (!apiKey) {
           try {
-            console.log('No direct API key, fetching from Netlify function...');
-            const response = await fetch('/.netlify/functions/getGoogleApiKey');
+            console.log('🔑 No direct API key, fetching from Netlify function...');
+            const netlifyURL = '/.netlify/functions/getGoogleApiKey';
+            console.log('Netlify function URL:', netlifyURL);
+            
+            const response = await fetch(netlifyURL);
+            console.log('Netlify function response status:', response.status);
             
             if (!response.ok) {
               throw new Error(`Failed to fetch API key: ${response.status}`);
             }
             
             const data = await response.json();
+            console.log('Netlify function response data structure:', Object.keys(data));
+            
             apiKey = data.apiKey;
             
             if (!apiKey) {
               throw new Error('No API key received from server');
             }
             
-            console.log('Successfully received API key from Netlify function');
+            console.log('✅ Successfully received API key from Netlify function');
           } catch (error) {
-            console.error('Error fetching API key from Netlify:', error);
+            console.error('❌ Error fetching API key from Netlify:', error);
+            console.error('Error details:', {
+              message: error.message,
+              stack: error.stack
+            });
             setGoogleApiError('Failed to get Google Maps API key. Using fallback data.');
             return;
           }
@@ -114,30 +134,53 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
         // Register our callback to be called when API loads
         window.googleMapsCallbacks = window.googleMapsCallbacks || [];
         window.googleMapsCallbacks.push(() => {
-          console.log('API loaded callback triggered');
+          console.log('✅ API loaded callback triggered');
           initializeGoogleServices();
           setGoogleApiLoaded(true);
           setUseGooglePlaces(true);
         });
         
+        // Add global callback function
+        window.initGoogleMapsAPI = function() {
+          console.log('🌐 Google Maps API global callback executed');
+          if (window.googleMapsCallbacks && Array.isArray(window.googleMapsCallbacks)) {
+            window.googleMapsCallbacks.forEach(callback => callback());
+          }
+        };
+        
         // Create and load the script
         const script = document.createElement('script');
+        // Mask API key in log but show partial string for debugging
+        const maskedKey = apiKey ? 
+          apiKey.substring(0, 4) + '...' + apiKey.substring(apiKey.length - 4) : 
+          'undefined';
+        console.log(`📜 Creating script with API key: ${maskedKey}`);
+        
         script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMapsAPI`;
         script.async = true;
         script.defer = true;
         
         // Handle script load errors
-        script.onerror = () => {
-          console.error('Failed to load Google Maps script');
+        script.onerror = (e) => {
+          console.error('❌ Failed to load Google Maps script', e);
+          console.error('Script attributes:', {
+            src: script.src.replace(apiKey, '[REDACTED]'),
+            async: script.async,
+            defer: script.defer
+          });
           setGoogleApiError('Failed to load Google Maps API. Using fallback data.');
         };
         
         // Add script to document
         document.head.appendChild(script);
-        console.log('Google Maps script added to head');
+        console.log('📑 Google Maps script added to head');
         
       } catch (error) {
-        console.error('Error in loadGoogleMapsAPI:', error);
+        console.error('❌ Error in loadGoogleMapsAPI:', error);
+        console.error('Error details:', {
+          message: error.message, 
+          stack: error.stack
+        });
         setGoogleApiError(`Error loading Google Maps API: ${error.message}. Using fallback data.`);
       }
     };
@@ -147,31 +190,60 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
 
   // Initialize Google services when API is loaded
   const initializeGoogleServices = () => {
-    if (!window.google || !window.google.maps || !window.google.maps.places) {
-      console.error('Google Maps API not available for initialization');
+    console.log('🔄 Attempting to initialize Google services');
+    
+    if (!window.google) {
+      console.error('❌ window.google is undefined');
+      return;
+    }
+    
+    if (!window.google.maps) {
+      console.error('❌ window.google.maps is undefined');
+      return;
+    }
+    
+    if (!window.google.maps.places) {
+      console.error('❌ window.google.maps.places is undefined');
       return;
     }
     
     try {
-      console.log('Initializing Google Maps services...');
+      console.log('🔄 Initializing Google Maps services...');
+      
+      // Check available Google Maps APIs
+      console.log('Available Google Maps APIs:', {
+        places: !!window.google.maps.places,
+        PlacesService: !!window.google.maps.places.PlacesService,
+        AutocompleteService: !!window.google.maps.places.AutocompleteService,
+        AutocompleteSessionToken: !!window.google.maps.places.AutocompleteSessionToken
+      });
       
       // Create a session token
       sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
+      console.log('✅ Created session token');
       
       // Initialize the autocomplete service
       autocompleteService.current = new window.google.maps.places.AutocompleteService();
+      console.log('✅ Created autocomplete service');
       
       // Initialize the Places service (needs a map div)
       const mapDiv = document.createElement('div');
+      console.log('🗺️ Creating map instance for Places service');
       const map = new window.google.maps.Map(mapDiv, { 
         center: { lat: 0, lng: 0 }, 
         zoom: 1 
       });
       placesService.current = new window.google.maps.places.PlacesService(map);
+      console.log('✅ Created places service');
       
-      console.log('Google Maps services initialized successfully');
+      console.log('✅ Google Maps services initialized successfully');
     } catch (error) {
-      console.error('Error initializing Google services:', error);
+      console.error('❌ Error initializing Google services:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        where: error.toString()
+      });
       setGoogleApiError(`Failed to initialize Google services: ${error.message}. Using fallback data.`);
       setUseGooglePlaces(false);
     }
@@ -249,7 +321,15 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
 
   // Get Google Places predictions
   const getGooglePlacesPredictions = (query) => {
-    if (!autocompleteService.current || !query || query.length < 2) {
+    console.log('🔍 getGooglePlacesPredictions called with:', query);
+    
+    if (!autocompleteService.current) {
+      console.error('❌ Autocomplete service not initialized');
+      return Promise.resolve([]);
+    }
+    
+    if (!query || query.length < 2) {
+      console.log('ℹ️ Query too short, skipping API call');
       return Promise.resolve([]);
     }
     
@@ -261,9 +341,14 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
           types: ['establishment']
         };
         
+        console.log('🔄 Preparing Places API request');
+        
         // Add session token if available
         if (sessionToken.current) {
           request.sessionToken = sessionToken.current;
+          console.log('✅ Added session token to request');
+        } else {
+          console.warn('⚠️ No session token available');
         }
         
         // Add location bias if user location is available
@@ -272,22 +357,58 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
             center: userLocation,
             radius: 50000 // 50km radius
           };
+          console.log('✅ Added location bias:', {
+            lat: userLocation.lat,
+            lng: userLocation.lng,
+            radius: '50km'
+          });
+        } else {
+          console.log('ℹ️ No user location available for bias');
         }
+        
+        console.log('📡 Sending Places API request:', {
+          input: request.input,
+          types: request.types,
+          hasSessionToken: !!request.sessionToken,
+          hasLocationBias: !!request.locationBias
+        });
         
         // Get predictions
         autocompleteService.current.getPlacePredictions(
           request,
           (predictions, status) => {
             if (status !== window.google.maps.places.PlacesServiceStatus.OK || !predictions) {
-              console.warn('Places Autocomplete returned status:', status);
+              console.warn('⚠️ Places Autocomplete returned status:', status);
+              console.warn('Details:', {
+                query: query,
+                status: status,
+                receivedPredictions: !!predictions,
+                predictionsCount: predictions ? predictions.length : 0
+              });
               resolve([]);
               return;
             }
+            
+            console.log(`✅ Received ${predictions.length} predictions from Places API`);
+            // Log the first prediction for debugging (if exists)
+            if (predictions.length > 0) {
+              const firstPrediction = predictions[0];
+              console.log('Sample prediction:', {
+                place_id: firstPrediction.place_id,
+                description: firstPrediction.description,
+                main_text: firstPrediction.structured_formatting?.main_text
+              });
+            }
+            
             resolve(predictions);
           }
         );
       } catch (error) {
-        console.error('Error in getPlacePredictions:', error);
+        console.error('❌ Error in getPlacePredictions:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
         resolve([]);
       }
     });
@@ -295,27 +416,48 @@ const GooglePlacesAutocomplete = ({ onBusinessSelect }) => {
   
   // Get details for a selected place
   const getPlaceDetails = (placeId) => {
+    console.log('🔍 getPlaceDetails called for place ID:', placeId);
+    
     if (!placesService.current) {
+      console.error('❌ Places service not initialized');
       return Promise.reject(new Error('Places service not initialized'));
     }
     
     return new Promise((resolve, reject) => {
       try {
+        const fields = ['name', 'formatted_address', 'formatted_phone_number', 'website', 'geometry', 'types'];
+        console.log('📡 Requesting place details with fields:', fields);
+        
         placesService.current.getDetails(
           {
             placeId: placeId,
-            fields: ['name', 'formatted_address', 'formatted_phone_number', 'website', 'geometry', 'types']
+            fields: fields
           },
           (place, status) => {
             if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place) {
+              console.error('❌ Error fetching place details. Status:', status);
               reject(new Error(`Error fetching place details: ${status}`));
               return;
             }
+            
+            console.log('✅ Successfully retrieved place details:', {
+              name: place.name,
+              address: place.formatted_address,
+              hasPhone: !!place.formatted_phone_number,
+              hasWebsite: !!place.website,
+              hasGeometry: !!place.geometry,
+              types: Array.isArray(place.types) ? place.types.slice(0, 3) : []
+            });
+            
             resolve(place);
           }
         );
       } catch (error) {
-        console.error('Error in getPlaceDetails:', error);
+        console.error('❌ Error in getPlaceDetails:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
         reject(error);
       }
     });
